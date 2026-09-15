@@ -65,6 +65,10 @@ Studio 位于应用 `/studio`，随 Worker 发布，无需另建 Sanity Studio �
 
 在 Worker 的变量与 secrets 页面保存，下表中的 key/token/secret 使用 Secret 类型。不能使用 `NEXT_PUBLIC_` 保存凭据。
 
+仓库设置 `keep_vars: true`，使部署保留网页后台管理的普通运行时变量。未启用时，平台构建部署流程中的 Wrangler 可能删除配置文件没有声明的网页变量；构建变量也不等于 Worker 运行时变量。该设置不会恢复已经丢失的变量，须由开发者在网页补回。[Wrangler 变量保留配置](https://developers.cloudflare.com/workers/wrangler/configuration/)
+
+如果部署后 `NEXT_PUBLIC_*` 消失，先确认网页部署选择的代码版本已包含 `keep_vars: true`（本地未提交修改不会自动进入 Git Builds）。在运行时恢复 `NEXT_PUBLIC_APP_URL`、原 `NEXT_PUBLIC_SANITY_PROJECT_ID`、原 `NEXT_PUBLIC_SANITY_DATASET`，并检查 `AUTH_TRUST_HOST` 等其他普通变量；可选分析服务变量按实际启用情况恢复。这三项公开变量还须在 Builds 中提供相同值。测试站 origin 为 `https://dirs.apphall.org`，Sanity 值须使用实际项目，不能填写本地 fixture 的 `localtest` / `local`。如构建时值已正确，仅补回运行时变量不需要改变浏览器产物；如构建值也缺失或错误，需从网页重新构建部署。
+
 | 变量 | 值 / 用途 |
 | --- | --- |
 | `AUTH_SECRET` | 开发者生成的高熵随机值；不是示例字符串 |
@@ -89,6 +93,8 @@ Studio 位于应用 `/studio`，随 Worker 发布，无需另建 Sanity Studio �
 首次部署后访问 `/auth/register`、`/studio` 和公开首页，完成 `.19` 最小验证。按平台实际包体与 CPU 报告选择允许该 Next.js 应用及密码校验的 Worker 计划；不要假定免费计划足够。
 
 ## 4. 身份、支付和管理员
+
+若重新部署后 Google 登录失败，先在浏览器查看 `/api/auth/providers`：正常应返回 HTTP 200 的提供方信息。若它与 `/api/auth/session` 均返回 500 的 server configuration 提示，且 `/api/auth/error` 重定向至 `/auth/error?error=Configuration`，说明认证配置检查已失败，不能仅凭 302 判断 Google 回调问题。到 Worker 日志查看 `[auth][error]`：`UntrustedHost` 优先核对运行时 `AUTH_TRUST_HOST=true`；`MissingSecret` 核对运行时 Secret `AUTH_SECRET` 是否存在且非空。Google 的 `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` 也须在运行时可用，不能只配置在 Builds。恢复原有正确值后，在网页保存并部署相应版本，再检查 providers 接口和 Google 登录。不要为排障随意轮换 `AUTH_SECRET`，这会影响已有会话。
 
 OAuth 控制台由开发者添加准确的 callback：`https://测试域名/api/auth/callback/google` 和 `/api/auth/callback/github`。未配置的提供方不要用于验收。
 

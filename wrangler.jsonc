@@ -2,6 +2,8 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mkdirs-v1",
   "main": "worker.ts",
+  // Runtime variables are managed in the dashboard; preserve them on deploy.
+  "keep_vars": true,
   "compatibility_date": "2026-09-15",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
