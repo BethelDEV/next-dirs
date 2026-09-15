@@ -19,6 +19,23 @@
 
 没有历史数据迁移，不使用临时图片 R2。图片直接上传公开 Sanity Assets，归属和上传状态保存在 D1。
 
+## 自动生成 LLM 内容入口
+
+- `/llms.txt`：简洁的站点说明和各类内容入口，不随条目数量增长。
+- `/llms-full.txt`：**全文分片目录**，明确指引客户端读取各分片，不再把全站正文汇总成一个文件。
+- `/blog/llms.txt`、`/blog/llms-full.txt`：博客专用索引与全文分片目录。
+- `/llms/items.txt`、`/llms/blog.txt`、`/llms/pages.txt`：产品、博客、CMS 页面摘要索引，每页最多 50 条；另外还有 `categories`、`tags`、`collections`、`blog-categories` 索引。
+- `/llms/items-full.txt`、`/llms/blog-full.txt`、`/llms/pages-full.txt`：相应全文分片，每页最多 10 篇，未压缩 UTF-8 响应最多 128 KiB（预留导航开销）。其他类型也有对应 `-full.txt` 入口。
+- `/item/{slug}/index.md`、`/blog/{slug}/index.md`、`/{slug}/index.md`：单个产品、博客、CMS 页面的完整 Markdown。富文本转换为 Markdown，图片仅保留替代文本。
+
+分页响应在正文中提供 `Next part`，同时返回 `Link: <...>; rel="next"`；沿链接可读取全部公开条目。游标按文档 ID 前进，无深度 offset 扫描。达到字节预算时，下一篇留给下一分片；单篇超过预算时，分片明确提示并链接到完整 Markdown，绝不截断正文。单篇地址仍可能很大，客户端可以按需选择读取。摘要索引中标题和简介分别最多显示 160、280 个字符。
+
+所有入口请求时自动生成，读取 Sanity 已发布内容，不需要额外环境变量、生成脚本或 Cron。站点名称与简介来自 `src/config/site.ts`，绝对链接使用 `NEXT_PUBLIC_APP_URL`。产品发布、更新或隐藏在同步到 Sanity 后反映到输出；CMS 修改在发布后反映。响应和上游读取均不缓存，即使携带预览 Cookie，也只读取已发布视图。分页是实时视图，跨请求并非冻结快照；抓取期间若有内容发布，可从首个分片重新读取。
+
+根索引不查询全库。分片只读取一页元数据，全文逐篇读取并重新检查可见性，避免同时把全站或整批博客正文装入内存；单篇大小仍影响该次读取的内存和耗时，实际 Worker 限制须在部署环境核验。查询只选取公开字段，不导出账号、订单、审核备注或业务归属信息。已隐藏、未发布或不存在的单篇返回 `404`；读取失败返回 `503`，不会用不完整文件冒充成功。页面通过 `rel="describedby"` 关联索引，产品、博客、CMS 页通过 `rel="alternate" type="text/markdown"` 关联单篇 Markdown。
+
+格式参考 [llms.txt 提案](https://llmstxt.org/)；它为 AI 客户端提供内容入口，不保证被特定服务抓取或提升排名。部署后可直接访问以上两个路径核验。
+
 ## 从空白环境运行本地验收
 
 需要 Node **22.12 以上**（本次使用 Node 24）、Corepack 和 Python Playwright / Chromium（仅浏览器测试需要）。

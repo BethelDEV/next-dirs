@@ -43,6 +43,7 @@ export async function generateMetadata({
     title: `${post.title}`,
     description: post.excerpt,
     canonicalUrl: `${siteConfig.url}/blog/${(await params).slug}`,
+    markdownUrl: `${siteConfig.url}/blog/${encodeURIComponent((await params).slug)}/index.md`,
     image: imageProps?.src,
   });
 }

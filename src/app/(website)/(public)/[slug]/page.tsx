@@ -26,6 +26,7 @@ export async function generateMetadata({
     title: page.title,
     description: page.excerpt,
     canonicalUrl: `${siteConfig.url}/${(await params).slug}`,
+    markdownUrl: `${siteConfig.url}/${encodeURIComponent((await params).slug)}/index.md`,
   });
 }
 

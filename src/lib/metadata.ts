@@ -8,12 +8,14 @@ export function constructMetadata({
   title = siteConfig.name,
   description = siteConfig.description,
   canonicalUrl,
+  markdownUrl,
   image = siteConfig.image,
   noIndex = false,
 }: {
   title?: string;
   description?: string;
   canonicalUrl?: string;
+  markdownUrl?: string;
   image?: string;
   noIndex?: boolean;
 } = {}): Metadata {
@@ -31,6 +33,7 @@ export function constructMetadata({
     alternates: canonicalUrl
       ? {
           canonical: canonicalUrl,
+          ...(markdownUrl ? { types: { "text/markdown": markdownUrl } } : {}),
         }
       : undefined,
     openGraph: {

@@ -47,6 +47,7 @@ export async function generateMetadata({
     title: `${item.name}`,
     description: item.description,
     canonicalUrl: `${siteConfig.url}/item/${(await params).slug}`,
+    markdownUrl: `${siteConfig.url}/item/${encodeURIComponent((await params).slug)}/index.md`,
     image: imageProps?.src,
   });
 }

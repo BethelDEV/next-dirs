@@ -9,6 +9,7 @@ import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 import Stripe from "stripe";
 import ts from "typescript";
 import { aiHttpResponse } from "./helpers/ai-http.mjs";
+import { llmsSmoke } from "./helpers/llms-worker.mjs";
 import { sanityMutationResponse } from "./helpers/sanity-http.mjs";
 import { stripeHttpProvider } from "./helpers/stripe-http.mjs";
 import { privateMarkers, seedWorkerData } from "./helpers/worker-data.mjs";
@@ -88,6 +89,7 @@ export async function startWorkerFixture() {
   assert.equal(error, undefined);
   assert.ok(config.d1_databases.every((binding) => binding.remote === false));
   const documents = [];
+  const faults = { sanityReads: false };
   const stripeProvider = stripeHttpProvider();
   const unexpectedOutbound = [];
   const runtime = new Miniflare(
@@ -117,6 +119,11 @@ export async function startWorkerFixture() {
           url.hostname === "localtest.api.sanity.io" &&
           url.pathname.endsWith("/data/query/local")
         ) {
+          if (faults.sanityReads)
+            return Response.json(
+              { error: "Synthetic provider failure" },
+              { status: 403 },
+            );
           const body = request.method === "POST" ? await request.json() : {};
           const query = body.query ?? url.searchParams.get("query");
           const params =
@@ -148,14 +155,14 @@ export async function startWorkerFixture() {
   try {
     const db = await runtime.getD1Database("DB");
     await seedWorkerData(db, documents);
-    return { runtime, db, documents, unexpectedOutbound };
+    return { runtime, db, documents, unexpectedOutbound, faults };
   } catch (error) {
     await runtime.dispose();
     throw error;
   }
 }
 
-async function smoke({ runtime, db, documents, unexpectedOutbound }) {
+async function smoke({ runtime, db, documents, unexpectedOutbound, faults }) {
   const stripe = new Stripe("sk_test_local_placeholder");
   const paymentEvent = JSON.stringify({
     id: "evt_local_paid",
@@ -205,6 +212,8 @@ async function smoke({ runtime, db, documents, unexpectedOutbound }) {
     "/item/local-published",
     "/sitemap.xml",
     "/robots.txt",
+    "/llms.txt",
+    "/llms-full.txt",
   ]) {
     const response = await runtime.dispatchFetch(
       new URL(route, "http://localhost:8787"),
@@ -215,10 +224,25 @@ async function smoke({ runtime, db, documents, unexpectedOutbound }) {
       assert.ok(!body.includes(marker), route.concat(" leaked ", marker));
     assert.ok(!body.includes("Local hidden listing"), route);
     assert.ok(!body.includes("Local pending listing"), route);
-    if (route === "/item/local-published")
+    if (route === "/item/local-published") {
       assert.match(body, /Local published listing/);
+      assert.match(
+        body,
+        /rel="alternate"[^>]*type="text\/markdown"[^>]*href="http:\/\/localhost:8787\/item\/local-published\/index.md"/,
+      );
+    }
+    if (route.startsWith("/llms")) {
+      assert.match(
+        response.headers.get("content-type"),
+        /text\/plain; charset=utf-8/,
+      );
+      assert.equal(response.headers.get("cache-control"), "no-store");
+      assert.match(body, /llms\/items/);
+      assert.ok(!body.includes("Safe **Markdown**"));
+    }
     console.log("Worker route passed:", route);
   }
+  await llmsSmoke(runtime, documents, faults);
   for (const [route, hasPublished] of [
     ["/search?q=published", true],
     ["/search?q=not-in-this-directory", false],
