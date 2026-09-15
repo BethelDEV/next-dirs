@@ -89,16 +89,6 @@ Cloudflare / Sanity 的资源、binding、secret、CORS、远程 SQL、Cron 和�
 
 实际平台包体、启动和密码校验 CPU、OAuth 回调、CMS 权限、发信与提供方故障恢复仍需网页部署后的验证。版本和业务决策见 [架构说明](docs/architecture-v1-decisions.md)。进度与验收结果以 Beads `next-dirs-5x9` 为准；`.19` / `.20` 完成后才能最终确认 `.21` 与 Epic。
 
-## Author
-
-[OpenFox](https://mksaas.link/fox-x) is an independent developer building products and developer tools. His products include:
-
-- [TanStarter](https://tanstarter.dev) — Ship Faster with TanStack, Cost Less with Cloudflare.
-- [MkSaaS](https://mksaas.com) — Make Your AI SaaS Product in a Weekend.
-- [MkImage](https://mkimage.ai) — Make Any Images Possible.
-- [Mkdirs](https://mkdirs.com) — Launch AI-powered directory in 30 minutes.
-- [MkDollar](https://mkdollar.com) — The all-in-one platform to help you make first dollar online.
-
 ## License
 
 Licensed under the [Apache License 2.0](LICENSE). You may use, modify, and
