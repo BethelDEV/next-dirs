@@ -2,7 +2,7 @@
 
 基于 Next.js 16、React 19、Cloudflare Workers / D1 和 Sanity 的目录网站模板，包含投稿、首次审核、支付、作者发布、运营管理、博客和 Newsletter。
 
-当前版本处于 `next-dirs-5x9` 验收阶段。平台测试环境尚待开发者按网页流程部署和验证；本地仿真结果不能替代实际环境验收。原版 Mkdirs 的 Vercel / Docker 安装指南不适用于本分支的 D1 架构。
+当前版本处于 `next-dirs-5x9` 验收阶段。开发者于 2026-09-15 反馈：已部署至 Cloudflare Workers 测试站 https://dirs.apphall.org，已应用 D1 初始化 SQL，Google 登录、项目提交（pending）及 Studio 分类/标签写入成功。完整业务流程仍待实际验收，详见 [部署与验收记录](docs/web-deployment.md#6-实际环境验收记录)；本地仿真结果不能替代实际环境验收。原版 Mkdirs 的 Vercel / Docker 安装指南不适用于本分支的 D1 架构。
 
 ## 数据与业务规则
 
@@ -80,7 +80,7 @@ Cloudflare / Sanity 的资源、binding、secret、CORS、远程 SQL、Cron 和�
 1. 创建空白 D1，在网页按顺序执行 `migrations/0001_initial.sql`，核对 `schema_migrations` 和 `docs/sql/verify-v1.sql`。
 2. 创建公开 Sanity dataset，配置独立发布 / 预览 token、权限和 CORS。
 3. 在 Worker 网页关联审核后的代码版本，配置 `DB`、`ASSETS`、构建变量、运行 secrets 和 Cron。
-4. 在应用注册并验证首个账户，再按 `docs/sql/bootstrap-admin.sql` 在 D1 网页初始化管理员。
+4. 在应用验证本人的邮箱账户或使用本人的 Google 账户登录，再按 `docs/sql/bootstrap-admin.sql` 在 D1 网页初始化管理员，退出并重新登录。
 5. 用测试账号、测试支付和测试收件箱完成文档中的实际环境验收。
 
 变量以 [.env.example](.env.example) 和交付包为准：公开 URL 使用 `NEXT_PUBLIC_APP_URL`；认证使用 `AUTH_SECRET`；Sanity 写入使用 `SANITY_PUBLISH_TOKEN`；Stripe 使用 `STRIPE_API_KEY` 和 `STRIPE_WEBHOOK_SECRET`。`NEXT_PUBLIC_*` 会进入浏览器产物，不得保存凭据。

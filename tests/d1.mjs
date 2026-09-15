@@ -184,6 +184,15 @@ try {
   await db.prepare("UPDATE outbox SET available_at='2000-01-01'").run();
   await drainOutbox(db, publisher);
   assert.ok((await listingById(db, id)).first_published_at);
+  assert.ok(
+    [...docs.values()].some(
+      (document) =>
+        !document._id.includes(".") &&
+        document.visible &&
+        document.slug.current === slug,
+    ),
+    "Completed publication must be readable by anonymous Sanity queries",
+  );
   await transitionListing(db, owner, id, 4, "edit", {
     ...content,
     name: "Edited",
@@ -195,13 +204,13 @@ try {
   await transitionListing(db, owner, id, 6, "edit", content);
   await assert.rejects(transitionListing(db, owner, id, 7, "publish"));
   await Promise.all([drainOutbox(db, publisher), drainOutbox(db, publisher)]);
-  assert.equal(docs.get(`listing.${id}`).visible, false);
+  assert.equal(docs.get(`listing-${id}`).visible, false);
   const stale = projectListing(
     { ...(await listingById(db, id)), desired_version: 5, admin_hidden: 0 },
     new Date().toISOString(),
   );
   await publisher.write(stale);
-  assert.equal(docs.get(`listing.${id}`).visible, false);
+  assert.equal(docs.get(`listing-${id}`).visible, false);
   for (const privateField of [
     "owner_id",
     "password",
@@ -210,7 +219,7 @@ try {
     "review_reason",
     "paid_plan",
   ])
-    assert.equal(privateField in docs.get(`listing.${id}`), false);
+    assert.equal(privateField in docs.get(`listing-${id}`), false);
   console.log(
     "D1 listings: author/editor permissions, first review, stable slug, optimistic concurrency, recovery and hidden-state preservation passed",
   );

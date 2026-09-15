@@ -41,6 +41,14 @@ python tests/browser/architecture.py
 
 ## v1 本地验收结果（2026-09-15）
 
+### 后续回归：已同步产品详情 404（next-dirs-5jm）
+
+早期 Sanity HTTP 替身未模拟含点号文档 ID 的匿名访问限制，因此遗漏 `listing.<id>` 投影写入成功但公开查询不可见的问题。修复后使用 `listing-<id>`，替身在匿名查询前过滤受限 ID。新增真实 Worker 回归：D1 显示 `synced` 且存在旧点号投影时详情返回 404；作者通过业务服务重新保存内容，保持审核通过，Cron 创建新投影后同一详情地址返回 200。旧点号文档保留，公开查询仅返回新文档。
+
+本轮 `typecheck`、`lint`、9 项单元测试、`test:d1`、`build:local:worker`、`test:worker` 和 `git diff --check` 通过；Worker 检查包含公开详情、分类/标签/集合、搜索、RSC 隐私、OG 和上述恢复流程。没有 UI 布局变更，本轮未重跑桌面/手机浏览器验收。线上仍需开发者部署后按 `docs/web-deployment.md` 重新同步受影响产品并反馈结果。
+
+### 初始全量验收
+
 | 检查 | 结果 |
 | --- | --- |
 | 17 个核心依赖的已安装 peer 范围 | 无冲突 |

@@ -10,7 +10,7 @@
 | `worker.ts` | OpenNext 请求入口和定时任务 |
 | `migrations/0001_initial.sql` | 空库初始化，最终记录 schema 版本 1 |
 | `docs/sql/verify-v1.sql` | 网页只读核对 |
-| `docs/sql/bootstrap-admin.sql` | 首个已验证账户提升为管理员 |
+| `docs/sql/bootstrap-admin.sql` | 本人已验证邮箱或 Google 账户初始化为首个管理员 |
 | `.env.example` / `.dev.vars.example` | 构建/开发变量与纯本地合成变量示例 |
 | `docs/architecture-v1-decisions.md` | 业务状态、数据边界和版本选择 |
 
@@ -40,6 +40,8 @@
 在项目 API / CORS origins 加入实际测试站点 origin（无路径），为 Studio 允许 credentials。开发 origin 只在确有需要时加入 `http://localhost:3000` 或 `http://localhost:8787`。不用任意来源通配符。[CORS 网页配置](https://www.sanity.io/docs/content-lake/cors)
 
 Studio 位于应用 `/studio`，随 Worker 发布，无需另建 Sanity Studio 托管。先在 Studio 创建分类、标签、博客作者等 CMS 数据。Collection 的 `Published listings` 用于选择条目；不能在 Studio 改条目审核、付款或管理下架状态。
+
+页脚的 `/about`、`/privacy`、`/terms` 依赖 Studio **Pages** 中的页面文档，D1 初始化不会创建它们。在 Pages 创建对应内容，将 Slug 分别设为 `about`、`privacy`、`terms`（不带 `/`），然后点击 **Publish**。根据标题自动生成的 `about-us`、`privacy-policy`、`terms-of-service` 与页脚链接不匹配。仅保存草稿或填写 Publish Date 不等于发布；普通访客只读取已发布内容。内容发布后刷新即可，无需产品审核、Cron 或重新部署。若仍返回 404，核对页面所在 project/dataset 是否与应用一致，以及普通已发布文档 ID 是否不含点号。
 
 ## 3. Worker 构建与运行设置
 
@@ -92,7 +94,9 @@ OAuth 控制台由开发者添加准确的 callback：`https://测试域名/api/
 
 Stripe 测试 Dashboard 创建上述固定金额/币种的一次性价格；改变价格时同步修改 `src/config/price.ts` 与服务端价格 ID。添加测试 Webhook endpoint `/api/webhook`，订阅 `checkout.session.completed`、`checkout.session.async_payment_succeeded`、`checkout.session.async_payment_failed`、`checkout.session.expired`、`charge.refunded`。通过测试后台重放事件，确认只发放一次权益。
 
-在应用注册并验证开发者本人的测试账户，在 D1 网页中找到该账户 ID，替换 `docs/sql/bootstrap-admin.sql` 的占位符后执行。脚本只允许创建第一个已验证管理员；重新登录后进入 `/admin`。以后角色/禁用操作在应用管理页面执行，不能靠注册参数指定角色。
+在应用注册并验证开发者本人的测试邮箱账户，或使用本人的 Google 账户成功登录。确认账户归属后，在绑定该 Worker 的 D1 网页中找到对应 `users.id`，替换 `docs/sql/bootstrap-admin.sql` 的占位符后执行。脚本只初始化第一个启用的管理员，支持本地邮箱已验证或已关联 Google 的账户，并递增 `session_version`；退出并重新登录后进入 `/admin`。以后角色/禁用操作在应用管理页面执行，不能靠注册参数指定角色。
+
+Google 登录成功时，Auth.js 仍可能将 `users.emailVerified` 保存为 `NULL`，不应为提权伪造该字段。若脚本更新 0 行，检查是否替换了正确的 `users.id`、目标 `disabled` 是否为 0、是否满足邮箱已验证或 Google 关联条件，以及库内是否已经存在 `role='ADMIN' AND disabled=0` 的账户。已有管理员时使用该账户登录管理页面调整角色。
 
 ## 5. 故障恢复与可见性
 
@@ -104,7 +108,36 @@ Stripe 测试 Dashboard 创建上述固定金额/币种的一次性价格；改�
 
 上传失败可重新上传。超时上传意图由定时任务标记 abandoned；公开资产可能被多个条目复用，本版不自动删除 Sanity 资产。旧批量写入/导出邮箱脚本、伪造 Origin 即发信的接口已移除或停用；管理在应用和 Studio 的对应入口完成。
 
+### 已同步产品详情 404：早期投影 ID 修复
+
+`next-dirs-5jm`：早期发布器使用 `listing.<D1 id>` 作为 Sanity 文档 ID。Sanity 将含点号的 ID 视为受限路径，匿名查询无法读取，即使任务显示 `synced`、文档 `visible=true`。公开读取保持匿名；修复后的投影与隐藏墓碑统一使用 `listing-<D1 id>`。[Sanity ID 与访问限制](https://www.sanity.io/docs/content-lake/ids)
+
+开发者在网页部署修复版本后，作者在 Dashboard 编辑受影响的已发布产品并保存，可触发新一轮同步，无需再次审核。等待同步完成后，通过卡片链接访问 `/item/<slug>`（不是 D1 UUID）。仅刷新页面不会让已经完成的任务再次执行，`Retry failed sync` 也只重试失败任务。
+
+原有 `listing.<D1 id>` 文档暂时保留；不复制旧投影或删除墓碑，新文档始终从 D1 当前状态生成，保留管理下架限制。如 Studio collection 曾引用旧 ID，开发者需在 Studio 将其改选为新 `listing-<D1 id>` 文档；分类和标签本身无需重建。若仍为 404，核对 Cron、发布 token、Worker 运行时与构建时的 Sanity project/dataset 是否一致，以及实际访问的 slug。
+
 ## 6. 实际环境验收记录
+
+### 2026-09-15：开发者首批反馈
+
+以下结果由开发者反馈，代理未独立在线复验：
+
+| 项目 | 结果 |
+| --- | --- |
+| Cloudflare Workers 部署 | 已部署，测试专用地址 https://dirs.apphall.org |
+| D1 初始化 | 已应用 `migrations/0001_initial.sql` |
+| Google 登录 | 成功 |
+| 项目提交 | 可以提交，显示 `pending` |
+| Sanity Studio | `/studio` 可访问，可添加 tag 和分类 |
+| 首次管理员 | 使用支持 Google 关联账号的 SQL 后可访问 `/admin` |
+| 申请审核 | 管理员可以批准产品申请 |
+| 作者发布及公开详情 | 作者已主动发布；`Sync: synced · Payment: none`，但 `/item/starter-04d0821e` 返回 404，跟踪于 `next-dirs-5jm` |
+
+`pending` 符合免费首次提交等待审核的流程；审核通过后仍由作者选择首次发布。初版管理员脚本因要求 `emailVerified` 非空而未生效，开发者使用支持 Google 关联账号的 SQL 后确认管理员访问和审批成功（`next-dirs-3ig`）。作者发布已获反馈，但公开详情出现上述 404，需部署修复并重新同步后实际复验。
+
+`.19` 已进入实际验收，仍需补充部署 Git 版本/构建 ID、`docs/sql/verify-v1.sql` 核对结果、图片公开上传、正文渲染和 OG 验证。`.20` 完整业务验收尚未完成，`.21` 和 Epic 保持未完成。
+
+### 完整验收范围
 
 在 Beads `.19` / `.20` 记录站点 URL、Git 版本/构建 ID、日期、各流程结果和已知问题，不记录 secret、完整邮箱或支付明细。覆盖：
 

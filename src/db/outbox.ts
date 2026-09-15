@@ -39,7 +39,9 @@ export function projectListing(
   owner?: UserRow,
 ): PublicProjection {
   const result: PublicProjection = {
-    _id: `listing.${row.id}`,
+    // Sanity restricts dotted document IDs to authenticated reads, even in a
+    // public dataset. Public projections and their tombstones use root IDs.
+    _id: `listing-${row.id}`,
     _type: "item",
     version: row.desired_version,
     visible: isVisible(row),

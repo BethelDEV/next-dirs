@@ -125,7 +125,7 @@ export async function seedWorkerData(db, documents) {
     description: "Synthetic collection",
     _createdAt: now,
     _updatedAt: now,
-    items: [{ _ref: "listing.published" }, { _ref: "listing.hidden" }],
+    items: [{ _ref: "listing-published" }, { _ref: "listing-hidden" }],
   });
   // Poisoned legacy documents must never appear in public queries, HTML or RSC.
   await db

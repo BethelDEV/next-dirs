@@ -14,6 +14,13 @@ import { stripeHttpProvider } from "./helpers/stripe-http.mjs";
 import { privateMarkers, seedWorkerData } from "./helpers/worker-data.mjs";
 
 const require = createRequire(import.meta.url);
+require("tsx/cjs");
+const { findUser } = require("../src/db/identity.ts");
+const {
+  listingById,
+  listingDto,
+  transitionListing,
+} = require("../src/db/listings.ts");
 const { build } = createRequire(require.resolve("wrangler"))("esbuild");
 const { parse, evaluate } = createRequire(
   require.resolve("sanity/package.json"),
@@ -121,7 +128,10 @@ export async function startWorkerFixture() {
             );
           const result = await (
             await evaluate(parse(query, { params }), {
-              dataset: documents,
+              // Sanity only exposes root document IDs to anonymous readers.
+              dataset: request.headers.has("authorization")
+                ? documents
+                : documents.filter((document) => !document._id.includes(".")),
               params,
             })
           ).get();
@@ -145,7 +155,7 @@ export async function startWorkerFixture() {
   }
 }
 
-async function smoke({ runtime, db, unexpectedOutbound }) {
+async function smoke({ runtime, db, documents, unexpectedOutbound }) {
   const stripe = new Stripe("sk_test_local_placeholder");
   const paymentEvent = JSON.stringify({
     id: "evt_local_paid",
@@ -256,6 +266,42 @@ async function smoke({ runtime, db, unexpectedOutbound }) {
   assert.equal(og.status, 200);
   assert.match(og.headers.get("content-type"), /image\/png/);
   assert.ok((await og.arrayBuffer()).byteLength > 1000);
+  // Reproduce the deployed failure: an acknowledged, visible projection with
+  // a dotted ID is invisible to anonymous readers. Re-sync creates a root ID.
+  const previous = documents.find(
+    (document) => document._id === "listing-published",
+  );
+  previous._id = "listing.published";
+  await db.batch([
+    db.prepare(
+      "UPDATE listings SET published_version=desired_version WHERE id='published'",
+    ),
+    db.prepare(
+      "UPDATE outbox SET status='done',last_error=NULL WHERE id='failed-publication'",
+    ),
+  ]);
+  const acknowledged = await listingById(db, "published");
+  assert.equal(listingDto(acknowledged).syncStatus, "synced");
+  const inaccessible = await runtime.dispatchFetch(
+    "http://localhost:8787/item/local-published",
+  );
+  const inaccessibleBody = await inaccessible.text();
+  assert.ok(
+    inaccessible.status === 404 ||
+      inaccessibleBody.includes("NEXT_HTTP_ERROR_FALLBACK;404"),
+  );
+  assert.ok(!inaccessibleBody.includes("Synthetic directory content"));
+  // Saving the existing content through the business service schedules a fresh
+  // projection without another review or resetting the author's publication.
+  await transitionListing(
+    db,
+    await findUser(db, "id", "owner"),
+    acknowledged.id,
+    acknowledged.desired_version,
+    "edit",
+    JSON.parse(acknowledged.content_json),
+  );
+  assert.equal((await listingById(db, "published")).review_status, "approved");
   await db
     .prepare(
       "INSERT INTO uploads(id,owner_id,status,mime_type,size_bytes,created_at) VALUES('expired-upload','owner','pending','image/png',100,'2000-01-01')",
@@ -265,6 +311,20 @@ async function smoke({ runtime, db, unexpectedOutbound }) {
     "http://localhost:8787/cdn-cgi/local/scheduled?format=json",
   );
   assert.equal(scheduled.status, 200, await scheduled.text());
+  assert.ok(documents.some((document) => document._id === "listing-published"));
+  assert.equal(previous._id, "listing.published");
+  const recovered = await runtime.dispatchFetch(
+    "http://localhost:8787/item/local-published",
+  );
+  assert.equal(recovered.status, 200);
+  assert.match(await recovered.text(), /Local published listing/);
+  assert.equal(
+    listingDto(await listingById(db, "published")).syncStatus,
+    "synced",
+  );
+  console.log(
+    "Worker publication: dotted-ID 404 reproduced and scheduled root-ID recovery passed",
+  );
   assert.equal(
     (
       await db
