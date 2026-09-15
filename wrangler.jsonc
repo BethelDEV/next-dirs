@@ -13,7 +13,7 @@
       "binding": "DB",
       "database_name": "mkdirs-v1",
       // Local placeholder. Developer replaces this with the dashboard-created ID.
-      "database_id": "00000000-0000-0000-0000-000000000001",
+      "database_id": "4702f7de-ad80-4aa2-9854-bc070ba4358d",
       "migrations_dir": "migrations",
       "remote": false
     }
