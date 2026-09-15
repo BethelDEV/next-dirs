@@ -1,5 +1,7 @@
 import BackButtonSmall from "@/components/shared/back-button-small";
+import { currentUser } from "@/lib/auth";
 import Image from "next/image";
+import { redirect } from "next/navigation";
 
 /**
  * auth layout is different from other public layouts,
@@ -7,11 +9,12 @@ import Image from "next/image";
  *
  * https://ui.shadcn.com/blocks#authentication-04
  */
-export default function AuthLayout({
+export default async function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  if (await currentUser()) redirect("/dashboard");
   return (
     <div>
       <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">

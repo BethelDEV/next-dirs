@@ -20,14 +20,16 @@ import type { Metadata } from "next";
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata | undefined> {
   const tag = await sanityFetch<TagQueryResult>({
     query: tagQuery,
-    params: { slug: params.slug },
+    params: { slug: (await params).slug },
   });
   if (!tag) {
-    console.warn(`generateMetadata, tag not found for slug: ${params.slug}`);
+    console.warn(
+      `generateMetadata, tag not found for slug: ${(await params).slug}`,
+    );
     return;
   }
 
@@ -39,7 +41,7 @@ export async function generateMetadata({
   return constructMetadata({
     title: `${tag.name}`,
     description: tag.description,
-    canonicalUrl: `${siteConfig.url}/tag/${params.slug}`,
+    canonicalUrl: `${siteConfig.url}/tag/${(await params).slug}`,
     // image: ogImageUrl.toString(),
   });
 }
@@ -48,8 +50,8 @@ export default async function TagPage({
   params,
   searchParams,
 }: {
-  params: { slug: string };
-  searchParams?: { [key: string]: string | string[] | undefined };
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const sponsorItems =
     (await sanityFetch<SponsorItemListQueryResult>({
@@ -59,12 +61,14 @@ export default async function TagPage({
   const showSponsor = true;
   const hasSponsorItem = showSponsor && sponsorItems.length > 0;
 
-  const { sort, page } = searchParams as { [key: string]: string };
+  const { sort, page } = ((await searchParams) ?? {}) as {
+    [key: string]: string;
+  };
   const { sortKey, reverse } =
     SORT_FILTER_LIST.find((item) => item.slug === sort) || DEFAULT_SORT;
   const currentPage = page ? Number(page) : 1;
   const { items, totalCount } = await getItems({
-    tag: params.slug,
+    tag: (await params).slug,
     sortKey,
     reverse,
     currentPage,
@@ -88,7 +92,7 @@ export default async function TagPage({
 
           <div className="mt-8 flex items-center justify-center">
             <CustomPagination
-              routePrefix={`/tag/${params.slug}`}
+              routePrefix={`/tag/${(await params).slug}`}
               totalPages={totalPages}
             />
           </div>

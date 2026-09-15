@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import type { SubmissionDto as ItemFullInfo } from "@/db/listings";
 import { SUPPORT_ITEM_ICON } from "@/lib/constants";
 import { urlForImage } from "@/lib/image";
 import { EditSchema } from "@/lib/schemas";
@@ -27,7 +28,6 @@ import type {
   CategoryListQueryResult,
   TagListQueryResult,
 } from "@/sanity.types";
-import type { ItemFullInfo } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BellRingIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -62,17 +62,11 @@ export function EditForm({ item, tagList, categoryList }: EditFormProps) {
       link: item.link,
       description: item.description,
       introduction: item.introduction,
-      ...(SUPPORT_ITEM_ICON
-        ? { iconId: item.icon?.asset?._ref ?? "" }
-        : {}),
+      ...(SUPPORT_ITEM_ICON ? { iconId: item.icon?.asset?._ref ?? "" } : {}),
       imageId: item.image?.asset?._ref,
       tags: item.tags.map((tag) => tag._id),
       categories: item.categories.map((category) => category._id),
-      pricePlan: item.pricePlan,
-      planStatus:
-        item.pricePlan === PricePlans.FREE
-          ? item.freePlanStatus
-          : item.proPlanStatus,
+      version: item.version,
     },
   });
 
@@ -80,7 +74,7 @@ export function EditForm({ item, tagList, categoryList }: EditFormProps) {
   const onSubmit = form.handleSubmit((data: EditFormData) => {
     // console.log('EditForm, onSubmit, data:', data);
     startTransition(async () => {
-      edit(data)
+      await edit(data)
         .then((data) => {
           if (data.status === "success") {
             console.log("EditForm, success:", data.message);
@@ -269,7 +263,9 @@ export function EditForm({ item, tagList, categoryList }: EditFormProps) {
                         <div className="mt-4 w-full h-[370px]">
                           <ImageUpload
                             onUploadChange={handleUploadIconChange}
-                            currentImageUrl={item.icon ? urlForImage(item.icon).src : ""}
+                            currentImageUrl={
+                              item.icon ? urlForImage(item.icon).src : ""
+                            }
                             type="icon"
                           />
                         </div>
@@ -331,27 +327,14 @@ export function EditForm({ item, tagList, categoryList }: EditFormProps) {
               </span>
             </Button>
 
-            {/* NOTICE: if this item is in free plan, any update will cause this item to be reviewed again */}
-            {item.pricePlan === PricePlans.FREE && (
-              <div className="text-muted-foreground flex items-center justify-center sm:justify-start gap-4">
-                <BellRingIcon className="h-5 w-5 sm:h-6 sm:w-4 flex-shrink-0" />
-                <span className="text-sm">
-                  Your submission will be reviewed again and remain unpublished
-                  until approved.
-                </span>
-              </div>
-            )}
-
-            {/* NOTICE: if this item is in pro plan, any update will cause this item to be reviewed again */}
-            {item.pricePlan === PricePlans.PRO && (
-              <div className="text-muted-foreground flex items-center justify-center sm:justify-start gap-4">
-                <BellRingIcon className="h-5 w-5 sm:h-6 sm:w-4 flex-shrink-0" />
-                <span className="text-sm">
-                  Your changes will be visible on the site until the cache
-                  refreshes (usually takes 1 minute).
-                </span>
-              </div>
-            )}
+            <p className="text-sm text-muted-foreground">
+              {item.firstPublishedAt
+                ? "Published changes sync automatically after saving."
+                : item.paid
+                  ? "Save your changes, then choose when to publish."
+                  : "Free submissions need approval before their first publication."}
+              {item.adminHidden && " This listing remains hidden by staff."}
+            </p>
           </CardFooter>
         </Card>
       </form>

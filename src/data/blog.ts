@@ -15,8 +15,14 @@ export async function getBlogs({
 }) {
   const { countQuery, dataQuery } = buildQuery(category, currentPage);
   const [totalCount, posts] = await Promise.all([
-    sanityFetch<number>({ query: countQuery }),
-    sanityFetch<BlogPostListQueryResult>({ query: dataQuery }),
+    sanityFetch<number>({
+      query: countQuery,
+      params: { category: category ?? "" },
+    }),
+    sanityFetch<BlogPostListQueryResult>({
+      query: dataQuery,
+      params: { category: category ?? "" },
+    }),
   ]);
   return { posts, totalCount };
 }
@@ -26,9 +32,11 @@ export async function getBlogs({
  */
 const buildQuery = (category?: string, currentPage = 1) => {
   const categoryCondition = category
-    ? `&& "${category}" in categories[]->slug.current`
+    ? "&& $category in categories[]->slug.current"
     : "";
-  const offsetStart = (currentPage - 1) * POSTS_PER_PAGE;
+  const page =
+    Number.isSafeInteger(currentPage) && currentPage > 0 ? currentPage : 1;
+  const offsetStart = (page - 1) * POSTS_PER_PAGE;
   const offsetEnd = offsetStart + POSTS_PER_PAGE;
 
   // @sanity-typegen-ignore

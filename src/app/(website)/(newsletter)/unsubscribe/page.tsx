@@ -12,9 +12,9 @@ export default function UnsubscribePage() {
   const [message, setMessage] = useState("Processing your request...");
 
   useEffect(() => {
-    const email = searchParams.get("email");
-    if (email) {
-      unsubscribeToNewsletter({ email })
+    const token = searchParams.get("token");
+    if (token) {
+      unsubscribeToNewsletter({ token })
         .then((response) => {
           console.log("unsubscribePage, response", response);
           if (response.status === "success") {
@@ -31,7 +31,7 @@ export default function UnsubscribePage() {
         });
     } else {
       console.log("unsubscribePage, no email provided");
-      setMessage("Invalid request. No email provided.");
+      setMessage("Invalid request. Missing token.");
     }
   }, [searchParams]);
 

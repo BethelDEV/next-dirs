@@ -21,9 +21,9 @@ export const metadata = constructMetadata({
 export default async function CollectionIndexPage({
   searchParams,
 }: {
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const { page } = searchParams as { [key: string]: string };
+  const { page } = ((await searchParams) ?? {}) as { [key: string]: string };
   const currentPage = page ? Number(page) : 1;
   const { collections, totalCount } = await getCollections({
     currentPage,

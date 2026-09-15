@@ -1,60 +1,33 @@
 "use server";
-
-import { getUserById } from "@/data/user";
+import { getDb } from "@/db";
+import { findUser } from "@/db/identity";
 import { currentUser } from "@/lib/auth";
-import type { UserPasswordData } from "@/lib/schemas";
-import { sanityClient } from "@/sanity/lib/client";
+import { type UserPasswordData, UserPasswordSchema } from "@/lib/schemas";
 import bcrypt from "bcryptjs";
-import { revalidatePath } from "next/cache";
-
-export type ServerActionResponse = {
-  status: "success" | "error";
-  message?: string;
-};
-
-export async function updateUserPassword(
-  values: UserPasswordData,
-): Promise<ServerActionResponse> {
-  try {
-    const user = await currentUser();
-    if (!user) {
-      return { status: "error", message: "Unauthorized" };
-    }
-
-    const dbUser = await getUserById(user.id);
-    if (!dbUser) {
-      return { status: "error", message: "User not found" };
-    }
-
-    // password change needs verification
-    if (values.password && values.newPassword && dbUser.password) {
-      const passwordsMatch = await bcrypt.compare(
-        values.password,
-        dbUser.password,
-      );
-
-      if (!passwordsMatch) {
-        return { status: "error", message: "Incorrect password!" };
-      }
-
-      const hashedPassword = await bcrypt.hash(values.newPassword, 10);
-      const updatedUser = await sanityClient
-        .patch(dbUser._id)
-        .set({
-          password: hashedPassword,
-        })
-        .commit();
-      console.log("updateUserPassword, user:", updatedUser);
-
-      revalidatePath("/settings");
-      return { status: "success", message: "User password updated!" };
-    }
-    return { status: "error", message: "No password provided" };
-  } catch (error) {
-    console.log("updateUserPassword, error", error);
-    return {
-      status: "error",
-      message: "Failed to update user password!",
-    };
-  }
+export async function updateUserPassword(values: UserPasswordData) {
+  const actor = await currentUser();
+  const parsed = UserPasswordSchema.safeParse(values);
+  if (!actor || !parsed.success)
+    return { status: "error", message: "Invalid request" };
+  const db = await getDb();
+  const user = await findUser(db, "id", actor.id);
+  if (
+    !user?.password ||
+    !(await bcrypt.compare(parsed.data.password, user.password))
+  )
+    return { status: "error", message: "Incorrect password" };
+  const result = await db
+    .prepare(
+      "UPDATE users SET password=?,session_version=session_version+1 WHERE id=? AND password=? AND disabled=0",
+    )
+    .bind(
+      await bcrypt.hash(parsed.data.newPassword, 12),
+      user.id,
+      user.password,
+    )
+    .run();
+  return {
+    status: result.meta.changes ? "success" : "error",
+    message: "Sign in again to continue",
+  };
 }

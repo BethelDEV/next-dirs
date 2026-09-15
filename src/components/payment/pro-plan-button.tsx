@@ -3,9 +3,10 @@
 import { createCheckoutSession } from "@/actions/create-checkout-session";
 import { Icons } from "@/components/icons/icons";
 import { Button } from "@/components/ui/button";
+import type { SubmissionDto as ItemInfo } from "@/db/listings";
 import { PricePlans, ProPlanStatus } from "@/lib/submission";
 import { cn } from "@/lib/utils";
-import type { ItemInfo, PricePlan } from "@/types";
+import type { PricePlan } from "@/types";
 import {
   ArrowRightIcon,
   ArrowUpLeftIcon,
@@ -33,8 +34,13 @@ export function ProPlanButton({
 
   const handleCreateCheckoutSession = () => {
     startTransition(async () => {
-      createCheckoutSession(item._id, pricePlan.stripePriceId, PricePlans.PRO)
+      await createCheckoutSession(
+        item._id,
+        pricePlan.stripePriceId,
+        PricePlans.PRO,
+      )
         .then((data) => {
+          if (data?.status === "error") toast.error(data.message);
           console.log("createCheckoutSession, data:", data);
           // already redirected to stripe checkout page in server action
         })
@@ -127,7 +133,7 @@ export function ProPlanButton({
         // not paid success yet
         <div className="flex items-center justify-center">
           <RocketIcon className="mr-2 size-4 icon-scale" />
-          <span>Pay & Publish Right Now</span>
+          <span>Continue to payment</span>
         </div>
       )}
     </Button>

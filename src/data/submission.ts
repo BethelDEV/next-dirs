@@ -1,49 +1,61 @@
+import "server-only";
+import { type ListingTaxonomy, listingById, listingDto } from "@/db/listings";
+import { canEdit } from "@/db/models";
+import type { ListingRow } from "@/db/models";
 import { SUBMISSIONS_PER_PAGE } from "@/lib/constants";
-import type { SubmissionListQueryResult } from "@/sanity.types";
 import { sanityFetch } from "@/sanity/lib/fetch";
-import { itemSimpleFields } from "@/sanity/lib/queries";
+import { requireActor } from "@/services/listing-actions";
 
-/**
- * get submissions from sanity
- */
-export async function getSubmissions({
-  userId,
-  currentPage,
-}: {
-  userId?: string;
-  currentPage: number;
-}) {
-  const { countQuery, dataQuery } = buildQuery(userId, currentPage);
-  const [totalCount, submissions] = await Promise.all([
-    sanityFetch<number>({
-      query: countQuery,
-      disableCache: true,
-    }),
-    sanityFetch<SubmissionListQueryResult>({
-      query: dataQuery,
-      disableCache: true,
-    }),
-  ]);
-  return { submissions, totalCount };
+/** Resolve CMS labels and public slugs without exposing private D1 rows to Sanity. */
+export async function getListingDtos(rows: ListingRow[]) {
+  if (!rows.length) return [];
+  const items = rows.map((row) => listingDto(row));
+  const ids = [
+    ...new Set(
+      items.flatMap((item) =>
+        [...item.categories, ...item.tags].map((term) => term._id),
+      ),
+    ),
+  ];
+  let terms: ListingTaxonomy[] = [];
+  try {
+    terms = await sanityFetch<ListingTaxonomy[]>({
+      query: '*[_type in ["category","tag"] && _id in $ids]{_id,name,slug}',
+      params: { ids },
+      perspective: "published",
+    });
+  } catch {
+    // CMS downtime must not prevent authors from accessing saved D1 content.
+    console.warn("Unable to resolve listing categories and tags");
+  }
+  const taxonomy = new Map(
+    terms
+      .filter((term) => term.name && term.slug?.current)
+      .map((term) => [term._id, term]),
+  );
+  return rows.map((row) => listingDto(row, taxonomy));
 }
-
-/**
- * build count and data query for get submissions from sanity
- */
-const buildQuery = (userId: string, currentPage = 1) => {
-  const userCondition = `&& submitter._ref == "${userId}"`;
-  const offsetStart = (currentPage - 1) * SUBMISSIONS_PER_PAGE;
-  const offsetEnd = offsetStart + SUBMISSIONS_PER_PAGE;
-
-  // @sanity-typegen-ignore
-  const countQuery = `count(*[_type == "item" && defined(slug.current) 
-       ${userCondition} ])`;
-  // @sanity-typegen-ignore
-  const dataQuery = `*[_type == "item" && defined(slug.current) 
-       ${userCondition} ] | order(_createdAt desc) [${offsetStart}...${offsetEnd}] {
-        ${itemSimpleFields}
-    }`;
-  // console.log('buildQuery, countQuery', countQuery);
-  // console.log('buildQuery, dataQuery', dataQuery);
-  return { countQuery, dataQuery };
-};
+export async function getSubmission(id: string) {
+  const { db, actor } = await requireActor();
+  const row = await listingById(db, id);
+  return row && canEdit(actor, row) ? (await getListingDtos([row]))[0] : null;
+}
+export async function getSubmissions({ currentPage }: { currentPage: number }) {
+  const { db, actor } = await requireActor();
+  const page =
+    Number.isSafeInteger(currentPage) && currentPage > 0 ? currentPage : 1;
+  const count = await db
+    .prepare("SELECT COUNT(*) AS count FROM listings WHERE owner_id=?")
+    .bind(actor.id)
+    .first<{ count: number }>();
+  const rows = await db
+    .prepare(
+      "SELECT listings.*,EXISTS(SELECT 1 FROM outbox WHERE listing_id=listings.id AND status='failed') AS failed_sync,(SELECT status FROM orders WHERE listing_id=listings.id ORDER BY created_at DESC LIMIT 1) AS payment_status FROM listings WHERE owner_id=? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+    )
+    .bind(actor.id, SUBMISSIONS_PER_PAGE, (page - 1) * SUBMISSIONS_PER_PAGE)
+    .all<ListingRow>();
+  return {
+    submissions: await getListingDtos(rows.results),
+    totalCount: count.count,
+  };
+}

@@ -1,3 +1,5 @@
+import "@/styles/mdx.css";
+export const dynamic = "force-dynamic";
 import "@/styles/globals.css";
 
 import {

@@ -1,140 +1,120 @@
 "use server";
-
-import { getUserById } from "@/data/user";
-import { currentUser } from "@/lib/auth";
-import { stripe } from "@/lib/stripe";
+import { priceConfig } from "@/config/price";
+import { listingById } from "@/db/listings";
+import type { OrderRow } from "@/db/payments";
+import { getStripe } from "@/lib/stripe";
 import { absoluteUrl } from "@/lib/utils";
-import { sanityClient } from "@/sanity/lib/client";
-import { sanityFetch } from "@/sanity/lib/fetch";
-import { itemByIdQuery } from "@/sanity/lib/queries";
-import type { ItemInfo } from "@/types";
+import { requireActor } from "@/services/listing-actions";
 import { redirect } from "next/navigation";
-
 export type ServerActionResponse = {
   status: "success" | "error";
   message?: string;
   stripeUrl?: string;
 };
-
-/**
- * https://github.com/javayhu/lms-studio-antonio/blob/main/app/api/courses/%5BcourseId%5D/checkout/route.ts
- */
 export async function createCheckoutSession(
   itemId: string,
-  priceId: string,
-  pricePlan: string,
+  _priceId: string,
+  plan: string,
 ): Promise<ServerActionResponse> {
-  let redirectUrl = "";
-
+  let url: string;
   try {
-    const user = await currentUser();
-    if (!user || !user.email || !user.id) {
-      return { status: "error", message: "Unauthorized" };
-    }
-
-    const item = await sanityFetch<ItemInfo>({
-      query: itemByIdQuery,
-      params: { id: itemId },
-    });
-    if (!item) {
-      return { status: "error", message: "Item not found!" };
-    }
-
-    // 1. get user's stripeCustomerId
-    const sanityUser = await getUserById(user.id);
-    if (item.submitter._id !== user.id) {
-      return { status: "error", message: "You are not allowed to do this!" };
-    }
-    let stripeCustomerId = sanityUser?.stripeCustomerId;
-    // console.log('stripeCustomerId:', stripeCustomerId);
-
-    // 2. if the item is paid and the submitter is the user, then redirect to the billing portal
-    if (stripeCustomerId && item.paid) {
-      console.log("item is paid, redirect to billing portal");
-      const billingUrl = absoluteUrl("/dashboard");
-      const stripeSession = await stripe.billingPortal.sessions.create({
-        customer: stripeCustomerId,
-        return_url: billingUrl,
-      });
-      redirectUrl = stripeSession.url as string;
-      // console.log('stripe billing portal session created, url:', redirectUrl);
-    } else {
-      // 3. make sure the user has a stripeCustomerId
-      console.log("item is not paid, redirect to stripe checkout session");
-      if (!stripeCustomerId) {
-        console.log("creating customer in Stripe and Sanity");
-        const customer = await stripe.customers.create({
-          email: user.email,
-        });
-        if (!customer) {
-          return {
-            status: "error",
-            message: "Failed to create customer in Stripe",
-          };
-        }
-
-        const result = await sanityClient
-          .patch(user.id)
-          .set({
-            stripeCustomerId: customer.id,
-          })
-          .commit();
-        if (!result) {
-          return {
-            status: "error",
-            message: "Failed to save customer in Sanity",
-          };
-        }
-        stripeCustomerId = customer.id;
-      }
-
-      // 4. create stripe checkout session
-      console.log(
-        "Creating Stripe checkout session:",
-        {
-          customerId: stripeCustomerId,
-          priceId,
-          userId: user.id,
-          itemId,
-        }
+    const { db, actor } = await requireActor();
+    const listing = await listingById(db, itemId);
+    const config = priceConfig.plans.find((p) => p.title === plan);
+    const priceId =
+      plan === "pro"
+        ? process.env.STRIPE_PRO_PRICE_ID
+        : plan === "sponsor"
+          ? process.env.STRIPE_SPONSOR_PRICE_ID
+          : null;
+    if (
+      !listing ||
+      listing.owner_id !== actor.id ||
+      listing.admin_hidden ||
+      !priceId ||
+      !config ||
+      config.price <= 0
+    )
+      return { status: "error", message: "Invalid checkout request" };
+    if (
+      listing.paid_plan &&
+      !(
+        plan === "sponsor" &&
+        listing.sponsor_ends_at &&
+        listing.sponsor_ends_at <= new Date().toISOString()
+      )
+    )
+      return {
+        status: "error",
+        message: "This listing already has paid access",
+      };
+    const stripe = getStripe();
+    let customerId = actor.stripe_customer_id;
+    if (!customerId) {
+      const customer = await stripe.customers.create(
+        { email: actor.email },
+        { idempotencyKey: `customer:${actor.id}` },
       );
-      // TODO: optimize the success and cancel urls with sessionId!!!
-      const successUrl = absoluteUrl(`/publish/${itemId}?pay=success`);
-      const cancelUrl = absoluteUrl(`/payment/${itemId}?pay=failed`);
-      const stripeSession = await stripe.checkout.sessions.create({
-        customer: stripeCustomerId,
-        mode: "payment",
-        line_items: [
-          {
-            price: priceId,
-            quantity: 1,
-          },
-        ],
-        metadata: {
-          userId: user.id,
-          itemId: itemId,
-          priceId: priceId,
-          pricePlan: pricePlan,
-        },
-        success_url: successUrl,
-        cancel_url: cancelUrl,
-        // do not limit to card, allow other payment methods
-        // payment_method_types: ["card"],
-        billing_address_collection: "auto",
-        // allow promotion codes if you need
-        allow_promotion_codes: true,
-      });
-
-      redirectUrl = stripeSession.url as string;
-      console.log("stripe checkout session created, url:", redirectUrl);
+      customerId = customer.id;
+      await db
+        .prepare(
+          "UPDATE users SET stripe_customer_id=? WHERE id=? AND stripe_customer_id IS NULL",
+        )
+        .bind(customerId, actor.id)
+        .run();
     }
-  } catch (error) {
+    const orderId = crypto.randomUUID();
+    await db
+      .prepare(
+        "INSERT INTO orders(id,user_id,listing_id,plan,price_id,amount,currency) VALUES(?,?,?,?,?,?,'usd') ON CONFLICT DO NOTHING",
+      )
+      .bind(
+        orderId,
+        actor.id,
+        itemId,
+        plan,
+        priceId,
+        Math.round(config.price * 100),
+      )
+      .run();
+    const order = await db
+      .prepare(
+        "SELECT * FROM orders WHERE listing_id=? AND status IN ('pending','processing')",
+      )
+      .bind(itemId)
+      .first<OrderRow>();
+    if (!order || order.plan !== plan)
+      return {
+        status: "error",
+        message: "Finish or expire the existing checkout first",
+      };
+    if (order.checkout_url) url = order.checkout_url;
+    else {
+      const session = await stripe.checkout.sessions.create(
+        {
+          customer: customerId,
+          mode: "payment",
+          line_items: [{ price: priceId, quantity: 1 }],
+          metadata: { orderId: order.id },
+          success_url: absoluteUrl(`/publish/${itemId}?pay=success`),
+          cancel_url: absoluteUrl(`/payment/${itemId}?pay=cancelled`),
+          allow_promotion_codes: false,
+        },
+        { idempotencyKey: `checkout:${order.id}` },
+      );
+      await db
+        .prepare(
+          "UPDATE orders SET stripe_session_id=?,checkout_url=? WHERE id=? AND stripe_session_id IS NULL",
+        )
+        .bind(session.id, session.url, order.id)
+        .run();
+      url = session.url;
+    }
+  } catch {
     return {
       status: "error",
-      message: "Failed to generate stripe checkout session",
+      message: "Unable to start checkout. Please retry.",
     };
   }
-
-  // 5. redirect to new url, no revalidatePath because redirect
-  redirect(redirectUrl);
+  redirect(url);
 }

@@ -47,7 +47,10 @@ export default function ItemCard2({ item }: ItemCard2Props) {
             />
           )}
 
-          <Link href={`${itemUrlPrefix}/${item.slug.current}`} className="min-w-0 flex-1">
+          <Link
+            href={`${itemUrlPrefix}/${item.slug.current}`}
+            className="min-w-0 flex-1"
+          >
             <h3
               className={cn(
                 "text-xl font-medium truncate overflow-hidden text-ellipsis",

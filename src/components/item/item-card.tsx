@@ -84,7 +84,6 @@ export default function ItemCard({ item }: ItemCardProps) {
           ) : null}
         </div>
 
-
         {/* center */}
         <Link
           href={`${itemUrlPrefix}/${item.slug.current}`}

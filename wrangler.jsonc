@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mkdirs-v1",
+  "main": "worker.ts",
+  "compatibility_date": "2026-09-15",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "mkdirs-v1",
+      // Local placeholder. Developer replaces this with the dashboard-created ID.
+      "database_id": "00000000-0000-0000-0000-000000000001",
+      "migrations_dir": "migrations",
+      "remote": false
+    }
+  ],
+  "triggers": { "crons": ["* * * * *"] },
+  "observability": { "enabled": true },
+  "dev": { "ip": "127.0.0.1", "port": 8787 }
+}

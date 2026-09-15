@@ -3,8 +3,8 @@
 import { publish } from "@/actions/publish";
 import { Icons } from "@/components/icons/icons";
 import { Button } from "@/components/ui/button";
+import type { SubmissionDto as ItemInfo } from "@/db/listings";
 import { getPublishable } from "@/lib/submission";
-import type { ItemInfo } from "@/types";
 import { ArrowUpToLineIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
@@ -30,7 +30,7 @@ export function PublishButton({ item }: PublishButtonProps) {
 
   const publishAction = () => {
     startTransition(async () => {
-      publish(item._id)
+      await publish(item._id)
         .then((data) => {
           if (data.status === "success") {
             console.log("publishAction, success:", data.message);

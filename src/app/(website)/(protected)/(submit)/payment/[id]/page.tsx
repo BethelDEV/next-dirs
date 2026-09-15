@@ -3,6 +3,7 @@ import SubmissionCardInPlanPage from "@/components/payment/submission-card-in-pl
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { siteConfig } from "@/config/site";
+import { getSubmission } from "@/data/submission";
 import { currentUser } from "@/lib/auth";
 import { constructMetadata } from "@/lib/metadata";
 import { sanityFetch } from "@/sanity/lib/fetch";
@@ -14,29 +15,27 @@ import { notFound, redirect } from "next/navigation";
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }): Promise<Metadata | undefined> {
   return constructMetadata({
     title: "Submit your product (2/3)",
     description: "Submit your product (2/3) Choose pricing plan",
-    canonicalUrl: `${siteConfig.url}/payment/${params.id}`,
+    canonicalUrl: `${siteConfig.url}/payment/${(await params).id}`,
   });
 }
 
-export default async function PlanPage({ params }: { params: { id: string } }) {
+export default async function PlanPage({
+  params,
+}: { params: Promise<{ id: string }> }) {
   const user = await currentUser();
   if (!user) {
     console.error("PlanPage, user not found");
     return redirect("/auth/login");
   }
 
-  const { id } = params;
+  const { id } = await params;
   console.log("PlanPage, itemId:", id);
-  const item = await sanityFetch<ItemInfo>({
-    query: itemByIdQuery,
-    params: { id: id },
-    disableCache: true,
-  });
+  const item = await getSubmission(id);
 
   if (!item) {
     console.error("PlanPage, item not found");

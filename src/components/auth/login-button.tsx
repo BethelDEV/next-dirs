@@ -1,5 +1,6 @@
 "use client";
 
+import { LoginForm } from "@/components/auth/login-form";
 import {
   Dialog,
   DialogContent,
@@ -7,7 +8,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { LoginForm } from "@/components/auth/login-form";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { authRoutes } from "@/routes";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -36,7 +36,7 @@ export const LoginWrapper = ({
 
   // Close the modal on route change
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
-    useEffect(() => {
+  useEffect(() => {
     setIsModalOpen(false);
   }, [pathname, searchParams]);
 

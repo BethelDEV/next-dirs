@@ -1,133 +1,77 @@
-import { getOrderByUserIdAndItemId } from "@/data/order";
-import { getUserById } from "@/data/user";
-import { sendMessageToDiscord } from "@/lib/discord";
-import { sendPaymentSuccessEmail } from "@/lib/mail";
-import { stripe } from "@/lib/stripe";
-import { PricePlans, ProPlanStatus, SponsorPlanStatus } from "@/lib/submission";
-import { getItemLinkInWebsite } from "@/lib/utils";
-import { sanityClient } from "@/sanity/lib/client";
-import { headers } from "next/headers";
-import type Stripe from "stripe";
-
-/**
- * Stripe webhook handler
- * This file handles webhook events from Stripe. It verifies the signature
- * of each request to ensure that the request is coming from Stripe. It also
- * handles the checkout.session.completed event type by creating a new purchase record in the database.
- *
- * https://github.com/mickasmt/next-saas-stripe-starter/blob/main/app/api/webhooks/stripe/route.ts
- * https://github.com/javayhu/lms-studio-antonio/blob/main/app/api/webhook/route.ts
- */
-export async function POST(req: Request) {
-  const body = await req.text();
-  const signature = headers().get("Stripe-Signature") as string;
-
+import { getDb } from "@/db";
+import { recordPayment, recordRefund } from "@/db/payments";
+import { boundedBody } from "@/lib/bounded-body";
+import { getStripe } from "@/lib/stripe";
+import Stripe from "stripe";
+export async function POST(request: Request) {
   let event: Stripe.Event;
-
   try {
-    event = stripe.webhooks.constructEvent(
+    const signature = request.headers.get("stripe-signature");
+    if (!signature || !process.env.STRIPE_WEBHOOK_SECRET)
+      return new Response(null, { status: 400 });
+    const body = new TextDecoder().decode(
+      await boundedBody(request, 1024 * 1024),
+    );
+    event = await getStripe().webhooks.constructEventAsync(
       body,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET,
+      undefined,
+      Stripe.createSubtleCryptoProvider(),
     );
-  } catch (error) {
-    console.error("Stripe webhook error:", error);
-    return new Response(`Webhook Error: ${error.message}`, { status: 400 });
+  } catch {
+    return new Response(null, { status: 400 });
   }
-
-  // console.log('stripe webhook event:', event);
-  console.log("stripe webhook event.type:", event.type);
-
-  if (event.type === "checkout.session.completed") {
-    console.log("checkout.session.completed event");
-    const session = event.data.object as Stripe.Checkout.Session;
-    const customerId = session.customer as string;
-    const amount = session.amount_total ? session.amount_total / 100 : 0;
-
-    const userId = session?.metadata?.userId;
-    const itemId = session?.metadata?.itemId;
-    const priceId = session?.metadata?.priceId;
-    const pricePlan = session?.metadata?.pricePlan;
-    // console.log('session:', session);
-    console.log(
-      `checkout.session.completed, userId: ${userId}, itemId: ${itemId}, priceId: ${priceId}, pricePlan: ${pricePlan}`,
-    );
-
-    // check if order already exists, if so, return
-    const order = await getOrderByUserIdAndItemId(userId, itemId);
-    if (order) {
-      console.log(
-        `checkout.session.completed, order already exists: ${order._id}`,
-      );
-      return new Response(null, { status: 200 });
-    }
-
-    const user = await getUserById(session?.metadata?.userId);
-    // console.log('user:', user);
-
-    if (user) {
-      const result = await sanityClient.create({
-        _type: "order",
-        user: {
-          _type: "reference",
-          _ref: user._id,
-        },
-        item: {
-          _type: "reference",
-          _ref: itemId,
-        },
-        status: "success",
-        date: new Date().toISOString(),
+  try {
+    const db = await getDb();
+    if (event.type === "charge.refunded") {
+      const charge = event.data.object;
+      const paymentId =
+        typeof charge.payment_intent === "string"
+          ? charge.payment_intent
+          : charge.payment_intent?.id;
+      if (paymentId)
+        await recordRefund(db, {
+          eventId: event.id,
+          paymentId,
+          refunded: charge.amount_refunded,
+          currency: charge.currency,
+        });
+    } else if (
+      event.type === "checkout.session.completed" ||
+      event.type === "checkout.session.async_payment_succeeded" ||
+      event.type === "checkout.session.async_payment_failed" ||
+      event.type === "checkout.session.expired"
+    ) {
+      const session = event.data.object;
+      const orderId = session.metadata?.orderId;
+      if (!orderId) return new Response(null, { status: 400 });
+      const paymentId =
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : (session.payment_intent?.id ?? null);
+      const state =
+        event.type === "checkout.session.expired"
+          ? "expired"
+          : event.type === "checkout.session.async_payment_failed"
+            ? "failed"
+            : session.payment_status === "paid"
+              ? "paid"
+              : "processing";
+      await recordPayment(db, {
+        eventId: event.id,
+        eventType: event.type,
+        orderId,
+        sessionId: session.id,
+        paymentId,
+        amount: session.amount_total,
+        currency: session.currency,
+        state,
       });
-
-      if (!result) {
-        console.log("checkout.session.completed, create order failed");
-        return new Response(null, { status: 500 });
-      }
-
-      // update order & status of item
-      const res = await sanityClient
-        .patch(itemId)
-        .set({
-          paid: true,
-          featured: true,
-          pricePlan: pricePlan, // pro or sponsor
-          sponsor: pricePlan === PricePlans.SPONSOR,
-          proPlanStatus:
-            pricePlan === PricePlans.PRO
-              ? ProPlanStatus.SUCCESS
-              : ProPlanStatus.SUBMITTING,
-          sponsorPlanStatus:
-            pricePlan === PricePlans.SPONSOR
-              ? SponsorPlanStatus.SUCCESS
-              : SponsorPlanStatus.SUBMITTING,
-          order: {
-            _type: "reference",
-            _ref: result._id,
-          },
-        })
-        .commit();
-
-      if (!res) {
-        console.log("checkout.session.completed, update item failed");
-        return new Response(null, { status: 500 });
-      }
-
-      // send thank you email to user
-      console.log(`checkout.session.completed, item: ${JSON.stringify(res)}`);
-      const itemLink = getItemLinkInWebsite(res.slug.current);
-      console.log(`checkout.session.completed, userName: ${user.name}, 
-        userEmail: ${user.email}, 
-        itemLink: ${itemLink}`);
-      await sendPaymentSuccessEmail(user.name, user.email, itemLink);
-
-      // send message to discord
-      await sendMessageToDiscord(session.id, customerId, user.name, amount);
-    } else {
-      console.log("checkout.session.completed, user not found");
-      return new Response(null, { status: 404 });
     }
+    return new Response(null, { status: 200 });
+  } catch {
+    console.error("Payment event processing failed", { eventId: event.id });
+    return new Response(null, { status: 500 });
   }
-
-  return new Response(null, { status: 200 });
 }

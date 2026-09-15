@@ -50,8 +50,7 @@ export const SubmitSchema = SUPPORT_ITEM_ICON
  */
 export const EditSchema = SubmitSchema.extend({
   id: z.string().min(1, { message: "ID is required" }),
-  pricePlan: z.string().min(1, { message: "Price plan is required" }),
-  planStatus: z.string().min(1, { message: "Plan status is required" }),
+  version: z.number().int().positive(),
 });
 
 /**

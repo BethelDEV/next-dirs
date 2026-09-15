@@ -7,6 +7,18 @@ export default defineType({
   type: "document",
   fields: [
     defineField({
+      name: "items",
+      title: "Published listings",
+      type: "array",
+      of: [
+        {
+          type: "reference",
+          to: [{ type: "item" }],
+          options: { filter: "visible == true" },
+        },
+      ],
+    }),
+    defineField({
       name: "name",
       title: "Name",
       type: "string",
@@ -34,6 +46,18 @@ export default defineType({
       title: "Icon",
       type: "image",
       fields: [
+        defineField({
+          name: "items",
+          title: "Published listings",
+          type: "array",
+          of: [
+            {
+              type: "reference",
+              to: [{ type: "item" }],
+              options: { filter: "visible == true" },
+            },
+          ],
+        }),
         {
           name: "alt",
           type: "string",

@@ -1,11 +1,11 @@
 "use client";
-
-import config from "@/sanity.config";
-import { NextStudio } from "next-sanity/studio";
-
-/**
- * https://www.sanity.io/plugins/next-sanity#studio-route-with-app-router
- */
+import dynamic from "next/dynamic";
+// Studio is an authenticated browser application; avoid bundling its editor
+// implementation into the Worker that serves the public directory.
+const StudioClient = dynamic(
+  () => import("@/components/studio/studio-client"),
+  { ssr: false, loading: () => <p>Loading Studio…</p> },
+);
 export default function Studio() {
-  return <NextStudio config={config} />;
+  return <StudioClient />;
 }

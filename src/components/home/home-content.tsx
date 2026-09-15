@@ -85,7 +85,11 @@ export async function HomeContent() {
             </Link> */}
           </div>
 
-          <ItemGrid items={featuredItems} sponsorItems={[]} showSponsor={false} />
+          <ItemGrid
+            items={featuredItems}
+            sponsorItems={[]}
+            showSponsor={false}
+          />
 
           <Button asChild variant="default" size="lg" className="mx-auto">
             <Link

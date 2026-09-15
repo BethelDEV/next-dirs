@@ -2,10 +2,13 @@
 
 import { signIn } from "@/auth";
 import { getUserByEmail } from "@/data/user";
+import { getDb } from "@/db";
+import { hashToken, limitAction } from "@/db/identity";
 import { sendVerificationEmail } from "@/lib/mail";
 import { LoginSchema } from "@/lib/schemas";
 import { generateVerificationToken } from "@/lib/tokens";
 import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
+import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import type * as z from "zod";
 
@@ -25,11 +28,32 @@ export async function login(
   }
 
   const { email, password } = validatedFields.data;
+  const db = await getDb();
+  if (
+    !(await limitAction(
+      db,
+      `login-action:${await hashToken(email.toLowerCase())}`,
+      10,
+      900,
+    ))
+  )
+    return { status: "error", message: "Please try again later" };
+  const redirectUrl =
+    callbackUrl?.startsWith("/") &&
+    !callbackUrl.startsWith("//") &&
+    !/[\\\r\n]/.test(callbackUrl)
+      ? callbackUrl
+      : DEFAULT_LOGIN_REDIRECT;
   const existingUser = await getUserByEmail(email);
   if (!existingUser || !existingUser.email || !existingUser.password) {
-    return { status: "error", message: "User does not exist!" };
+    return { status: "error", message: "Invalid credentials!" };
   }
 
+  if (
+    existingUser.disabled ||
+    !(await bcrypt.compare(password, existingUser.password))
+  )
+    return { status: "error", message: "Invalid credentials!" };
   if (!existingUser.emailVerified) {
     const verificationToken = await generateVerificationToken(
       existingUser.email,
@@ -45,19 +69,18 @@ export async function login(
   }
 
   try {
-    console.log("login, start signIn");
     // https://youtu.be/1MTyCvS05V4?t=9828
     await signIn("credentials", {
       email,
       password,
       redirect: false,
-      redirectTo: callbackUrl || DEFAULT_LOGIN_REDIRECT,
+      redirectTo: redirectUrl,
     });
 
     return {
       status: "success",
       message: "Login success",
-      redirectUrl: callbackUrl || DEFAULT_LOGIN_REDIRECT,
+      redirectUrl: redirectUrl,
     };
   } catch (error) {
     // console.error("login, error:", error);

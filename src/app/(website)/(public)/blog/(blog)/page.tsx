@@ -15,10 +15,10 @@ export const metadata = constructMetadata({
 export default async function BlogIndexPage({
   searchParams,
 }: {
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   console.log("BlogIndexPage, searchParams", searchParams);
-  const { page } = searchParams as { [key: string]: string };
+  const { page } = ((await searchParams) ?? {}) as { [key: string]: string };
   const currentPage = page ? Number(page) : 1;
   const { posts, totalCount } = await getBlogs({ currentPage });
   const totalPages = Math.ceil(totalCount / POSTS_PER_PAGE);

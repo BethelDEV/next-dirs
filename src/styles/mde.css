@@ -5,6 +5,52 @@
   color: hsl(var(--muted-foreground)) !important;
 }
 
+/* Local toolbar marks keep editing available without a third-party icon font. */
+.editor-toolbar button i {
+  display: none;
+}
+.editor-toolbar button::before {
+  font-family: inherit;
+  font-size: 16px;
+}
+.editor-toolbar .heading::before {
+  content: "H";
+  font-weight: 700;
+}
+.editor-toolbar .bold::before {
+  content: "B";
+  font-weight: 700;
+}
+.editor-toolbar .italic::before {
+  content: "I";
+  font-style: italic;
+}
+.editor-toolbar .strikethrough::before {
+  content: "S";
+  text-decoration: line-through;
+}
+.editor-toolbar .code::before {
+  content: "<>";
+}
+.editor-toolbar .quote::before {
+  content: "❞";
+}
+.editor-toolbar .unordered-list::before {
+  content: "•≡";
+}
+.editor-toolbar .ordered-list::before {
+  content: "1≡";
+}
+.editor-toolbar .link::before {
+  content: "↗";
+}
+.editor-toolbar .preview::before {
+  content: "◉";
+}
+.editor-toolbar .guide::before {
+  content: "?";
+}
+
 .editor-preview-full {
   max-width: none !important;
   padding: 1rem !important;

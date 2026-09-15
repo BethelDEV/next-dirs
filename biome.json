@@ -1,36 +1,44 @@
 {
-	"files": {
-		"ignore": [
-			"src/components/ui/*.tsx"
-		]
-	},
-	"formatter": {
-	  "enabled": true,
-	  "formatWithErrors": false,
-	  "ignore": [],
-	  "attributePosition": "auto",
-	  "indentStyle": "space",
-	  "indentWidth": 2,
-	  "lineWidth": 80,
-	  "lineEnding": "lf"
-	},
-	"javascript": {
-	  "formatter": {
-		"arrowParentheses":"always",
-		"bracketSameLine": false,
-		"bracketSpacing": true,
-		"jsxQuoteStyle": "double",
-		"quoteProperties": "asNeeded",
-		"semicolons": "always",
-		"trailingCommas": "all"
-	  }
-	},
-	"json": {
-	  "formatter": {
-		"trailingCommas": "none"
-	  }
-	},
-	"organizeImports": {
-		"enabled": true
-	}
+  "files": {
+    "ignore": [
+      "src/components/ui/*.tsx",
+      ".next/**",
+      ".open-next/**",
+      ".wrangler/**",
+      "cloudflare-env.d.ts",
+      "sanity.types.ts",
+      "schema.json",
+      ".beads/**",
+      "tmp/**"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "ignore": [],
+    "attributePosition": "auto",
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 80,
+    "lineEnding": "lf"
+  },
+  "javascript": {
+    "formatter": {
+      "arrowParentheses": "always",
+      "bracketSameLine": false,
+      "bracketSpacing": true,
+      "jsxQuoteStyle": "double",
+      "quoteProperties": "asNeeded",
+      "semicolons": "always",
+      "trailingCommas": "all"
+    }
+  },
+  "json": {
+    "formatter": {
+      "trailingCommas": "none"
+    }
+  },
+  "organizeImports": {
+    "enabled": true
+  }
 }

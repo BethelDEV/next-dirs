@@ -1,7 +1,7 @@
 import AllPostsButton from "@/components/blog/all-posts-button";
-import BlogCustomMdx from "@/components/blog/blog-custom-mdx";
 import BlogGrid from "@/components/blog/blog-grid";
 import { BlogToc } from "@/components/blog/blog-toc";
+import { CmsContent } from "@/components/shared/cms-content";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { siteConfig } from "@/config/site";
 import { urlForImage } from "@/lib/image";
@@ -24,14 +24,16 @@ import { notFound } from "next/navigation";
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata | undefined> {
   const post = await sanityFetch<BlogPostMetadataQueryResult>({
     query: blogPostMetadataQuery,
-    params: { slug: params.slug },
+    params: { slug: (await params).slug },
   });
   if (!post) {
-    console.warn(`generateMetadata, post not found for slug: ${params.slug}`);
+    console.warn(
+      `generateMetadata, post not found for slug: ${(await params).slug}`,
+    );
     return;
   }
 
@@ -40,17 +42,17 @@ export async function generateMetadata({
   return constructMetadata({
     title: `${post.title}`,
     description: post.excerpt,
-    canonicalUrl: `${siteConfig.url}/blog/${params.slug}`,
+    canonicalUrl: `${siteConfig.url}/blog/${(await params).slug}`,
     image: imageProps?.src,
   });
 }
 
 interface PostPageProps {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
 export default async function PostPage({ params }: PostPageProps) {
-  const slug = params.slug;
+  const slug = (await params).slug;
   const queryParams = { slug };
   const post = await sanityFetch<BlogPostQueryResult>({
     query: blogPostQuery,
@@ -106,7 +108,7 @@ export default async function PostPage({ params }: PostPageProps) {
 
           {/* blog post content */}
           <div className="mt-4">
-            {markdownContent && <BlogCustomMdx source={markdownContent} />}
+            {post.body && <CmsContent value={post.body} />}
           </div>
 
           <div className="flex items-center justify-start mt-16">

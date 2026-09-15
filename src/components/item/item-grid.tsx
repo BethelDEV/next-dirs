@@ -1,6 +1,9 @@
 import { ItemCardSkeleton } from "@/components/item/item-card";
 import { ITEMS_PER_PAGE, SUPPORT_ITEM_ICON } from "@/lib/constants";
-import type { ItemListQueryResult, SponsorItemListQueryResult } from "@/sanity.types";
+import type {
+  ItemListQueryResult,
+  SponsorItemListQueryResult,
+} from "@/sanity.types";
 import { ItemCard2Skeleton } from "./item-card-2";
 import ItemGridClient from "./item-grid-client";
 
@@ -17,7 +20,11 @@ interface ItemGridProps {
  * 2. show item card with icon when SUPPORT_ITEM_ICON is true
  * otherwise show item card with image
  */
-export default async function ItemGrid({ items, sponsorItems, showSponsor = true }: ItemGridProps) {
+export default async function ItemGrid({
+  items,
+  sponsorItems,
+  showSponsor = true,
+}: ItemGridProps) {
   if (!showSponsor) {
     return <ItemGridClient items={items} />;
   }
@@ -28,8 +35,10 @@ export default async function ItemGrid({ items, sponsorItems, showSponsor = true
   // show sponsor item in the 3rd item
   const allItems = [
     ...items.slice(0, 2),
-    ...(Array.isArray(sponsorItems) && sponsorItems.length > 0 ? [sponsorItems[0]] : []),
-    ...items.slice(2)
+    ...(Array.isArray(sponsorItems) && sponsorItems.length > 0
+      ? [sponsorItems[0]]
+      : []),
+    ...items.slice(2),
   ];
 
   return <ItemGridClient items={allItems} />;

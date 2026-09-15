@@ -1,4 +1,4 @@
-import type { ItemInfo } from "@/types";
+import type { SubmissionDto as ItemInfo } from "@/db/listings";
 
 export enum PricePlans {
   FREE = "free",
@@ -28,6 +28,8 @@ export enum SponsorPlanStatus {
 }
 
 export const getPublishable = (item: ItemInfo): boolean => {
+  if (item.adminHidden) return false;
+  if (item.firstPublishedAt) return true;
   if (item.pricePlan === PricePlans.FREE) {
     return item.freePlanStatus === FreePlanStatus.APPROVED;
   }

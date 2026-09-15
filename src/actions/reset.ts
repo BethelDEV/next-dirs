@@ -1,6 +1,8 @@
 "use server";
 
 import { getUserByEmail } from "@/data/user";
+import { getDb } from "@/db";
+import { hashToken, limitAction } from "@/db/identity";
 import { sendPasswordResetEmail } from "@/lib/mail";
 import { ResetSchema } from "@/lib/schemas";
 import { generatePasswordResetToken } from "@/lib/tokens";
@@ -21,9 +23,22 @@ export async function reset(
 
   const { email } = validatedFields.data;
 
+  const response = {
+    status: "success" as const,
+    message: "If this account can reset its password, an email is on its way.",
+  };
+  if (
+    !(await limitAction(
+      await getDb(),
+      `reset:${await hashToken(email.toLowerCase())}`,
+      3,
+      3600,
+    ))
+  )
+    return response;
   const existingUser = await getUserByEmail(email);
-  if (!existingUser) {
-    return { status: "error", message: "Email not found!" };
+  if (!existingUser || existingUser.disabled || !existingUser.password) {
+    return response;
   }
 
   const passwordResetToken = await generatePasswordResetToken(email);
@@ -33,5 +48,5 @@ export async function reset(
     passwordResetToken.token,
   );
 
-  return { status: "success", message: "Password reset email sent" };
+  return response;
 }

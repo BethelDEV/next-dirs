@@ -13,15 +13,15 @@ import type { Metadata } from "next";
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata | undefined> {
   const category = await sanityFetch<BlogCategoryMetadateQueryResult>({
     query: blogCategoryMetadateQuery,
-    params: { slug: params.slug },
+    params: { slug: (await params).slug },
   });
   if (!category) {
     console.warn(
-      `generateMetadata, category not found for slug: ${params.slug}`,
+      `generateMetadata, category not found for slug: ${(await params).slug}`,
     );
     return;
   }
@@ -34,7 +34,7 @@ export async function generateMetadata({
   return constructMetadata({
     title: `${category.name}`,
     description: category.description,
-    canonicalUrl: `${siteConfig.url}/blog/category/${params.slug}`,
+    canonicalUrl: `${siteConfig.url}/blog/category/${(await params).slug}`,
     // image: ogImageUrl.toString(),
   });
 }
@@ -43,14 +43,14 @@ export default async function BlogCategoryPage({
   params,
   searchParams,
 }: {
-  params: { slug: string };
-  searchParams?: { [key: string]: string | string[] | undefined };
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   // console.log('BlogCategoryPage, searchParams', searchParams);
-  const { page } = searchParams as { [key: string]: string };
+  const { page } = ((await searchParams) ?? {}) as { [key: string]: string };
   const currentPage = page ? Number(page) : 1;
   const { posts, totalCount } = await getBlogs({
-    category: params.slug,
+    category: (await params).slug,
     currentPage,
   });
   const totalPages = Math.ceil(totalCount / POSTS_PER_PAGE);
@@ -73,7 +73,7 @@ export default async function BlogCategoryPage({
 
           <div className="mt-8 flex items-center justify-center">
             <CustomPagination
-              routePrefix={`/blog/${params.slug}`}
+              routePrefix={`/blog/${(await params).slug}`}
               totalPages={totalPages}
             />
           </div>

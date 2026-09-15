@@ -3,7 +3,7 @@
 import { unpublish } from "@/actions/unpublish";
 import { Icons } from "@/components/icons/icons";
 import { Button } from "@/components/ui/button";
-import type { ItemInfo } from "@/types";
+import type { SubmissionDto as ItemInfo } from "@/db/listings";
 import { ArrowDownToLineIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
@@ -20,7 +20,7 @@ export function UnpublishButton({ item }: UnpublishButtonProps) {
 
   const unpublishAction = () => {
     startTransition(async () => {
-      unpublish(item._id)
+      await unpublish(item._id)
         .then((data) => {
           if (data.status === "success") {
             console.log("unpublishAction, success:", data.message);

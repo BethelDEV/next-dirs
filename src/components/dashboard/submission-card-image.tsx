@@ -1,7 +1,7 @@
 "use client";
 
+import type { SubmissionDto as ItemInfo } from "@/db/listings";
 import { urlForImage } from "@/lib/image";
-import type { ItemInfo } from "@/types";
 import { HashIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -50,18 +50,21 @@ export default function SubmissionCardImage({
               )}
               {item.tags && item.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 items-center">
-                  {item.tags.slice(0, 5).map((tag, index) => (
-                    <Link
-                      key={tag._id}
-                      href={`/tag/${tag.slug.current}`}
-                      className="flex items-center justify-center space-x-0.5 group"
-                    >
-                      <HashIcon className="w-3 h-3 text-muted-foreground icon-scale" />
-                      <span className="text-sm text-muted-foreground link-underline">
-                        {tag.name}
-                      </span>
-                    </Link>
-                  ))}
+                  {item.tags
+                    .filter((tag) => tag.slug.current)
+                    .slice(0, 5)
+                    .map((tag) => (
+                      <Link
+                        key={tag._id}
+                        href={`/tag/${tag.slug.current}`}
+                        className="flex items-center justify-center space-x-0.5 group"
+                      >
+                        <HashIcon className="w-3 h-3 text-muted-foreground icon-scale" />
+                        <span className="text-sm text-muted-foreground link-underline">
+                          {tag.name}
+                        </span>
+                      </Link>
+                    ))}
                   {item.tags.length > 5 && (
                     <span className="text-sm text-muted-foreground px-1">
                       +{item.tags.length - 5}

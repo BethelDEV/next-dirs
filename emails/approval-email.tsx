@@ -34,10 +34,7 @@ interface ApprovalEmailProps {
 /**
  * https://demo.react.email/preview/welcome/stripe-welcome
  */
-export const ApprovalEmail = ({
-  userName,
-  itemLink,
-}: ApprovalEmailProps) => {
+export const ApprovalEmail = ({ userName, itemLink }: ApprovalEmailProps) => {
   const baseUrl = getBaseUrl();
   return (
     <Html>

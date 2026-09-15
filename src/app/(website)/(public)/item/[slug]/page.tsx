@@ -29,14 +29,16 @@ import { notFound } from "next/navigation";
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata | undefined> {
   const item = await sanityFetch<ItemInfoBySlugQueryResult>({
     query: itemInfoBySlugQuery,
-    params: { slug: params.slug },
+    params: { slug: (await params).slug },
   });
   if (!item) {
-    console.warn(`generateMetadata, item not found for slug: ${params.slug}`);
+    console.warn(
+      `generateMetadata, item not found for slug: ${(await params).slug}`,
+    );
     return;
   }
 
@@ -44,27 +46,27 @@ export async function generateMetadata({
   return constructMetadata({
     title: `${item.name}`,
     description: item.description,
-    canonicalUrl: `${siteConfig.url}/item/${params.slug}`,
+    canonicalUrl: `${siteConfig.url}/item/${(await params).slug}`,
     image: imageProps?.src,
   });
 }
 
 interface ItemPageProps {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
 export default async function ItemPage({ params }: ItemPageProps) {
   // if you do not support sponsor item, you can use this code
   // const item = await sanityFetch<ItemFullInfo>({
   //   query: itemFullInfoBySlugQuery,
-  //   params: { slug: params.slug },
+  //   params: { slug: (await params).slug },
   // });
 
   // if you support sponsor item, you can use this code
   const [item, sponsorItems] = await Promise.all([
     sanityFetch<ItemFullInfo>({
       query: itemFullInfoBySlugQuery,
-      params: { slug: params.slug },
+      params: { slug: (await params).slug },
     }),
     sanityFetch<SponsorItemListQueryResult>({
       query: sponsorItemListQuery,
@@ -209,7 +211,7 @@ export default async function ItemPage({ params }: ItemPageProps) {
               <div className="bg-muted/50 rounded-lg p-6">
                 <h2 className="text-lg font-semibold mb-4">Information</h2>
                 <ul className="space-y-4 text-sm">
-                {item.submitter && (
+                  {item.submitter && (
                     <li className="flex justify-between">
                       <span className="text-muted-foreground">Publisher</span>
                       <div className="flex items-center gap-2">
@@ -309,7 +311,11 @@ export default async function ItemPage({ params }: ItemPageProps) {
           </div>
 
           <div className="mt-4">
-            <ItemGrid items={item.related} sponsorItems={sponsorItems} showSponsor={false} />
+            <ItemGrid
+              items={item.related}
+              sponsorItems={sponsorItems}
+              showSponsor={false}
+            />
           </div>
         </div>
       )}

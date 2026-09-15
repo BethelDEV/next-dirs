@@ -4,79 +4,53 @@ This file provides guidance to Code Agents (Codex, Cursor, etc.) when working wi
 
 ## Project Overview
 
-Mkdirs is a Next.js 14 directory website template with Sanity CMS, enabling AI-powered directory sites with listings, payments, authentication, blog, and newsletter features.
+Mkdirs v1 uses Next.js 16 / React 19 on Cloudflare Workers through OpenNext. D1 owns identity, listing business content, review, payments, uploads, notifications and audit. Sanity holds public listing projections, CMS content and public images. See `README.md`, `docs/architecture-v1-decisions.md`, and `docs/local-validation.md`.
+
+## Execution Boundaries
+
+Cloudflare / Sanity resource creation, remote SQL, bindings, secrets, CORS, roles, Cron, domains and deployment are developer-only web dashboard steps. Do not use CLI, management APIs, SDKs or scripts to bypass this boundary. Local configuration, SQL files, builds and isolated workerd/D1 tests are authorized. Do not commit, push or sync Dolt without explicit user authorization. Human acceptance is tracked in `next-dirs-5x9.19` and `.20`.
 
 ## Commands
 
-- **Dev server**: `pnpm dev`
-- **Build**: `pnpm build`
-- **Start production**: `pnpm start`
-- **Lint**: `pnpm lint` (Biome - checks and auto-fixes)
-- **Lint with unsafe fixes**: `pnpm lint:fix`
-- **Format**: `pnpm format` (Biome)
-- **Generate Sanity types**: `pnpm typegen` (run after schema changes)
-- **Email preview**: `pnpm email` (starts email dev server on port 3333)
-- **Batch item operations**: `pnpm item:import`, `pnpm item:fetch`, `pnpm item:update`, `pnpm item:remove`
-- **Batch all**: `pnpm batch` (or `pnpm batch:import`, `pnpm batch:update`, `pnpm batch:remove`)
+Use `corepack pnpm` with Node >=22.12; the lockfile specifies the pnpm version.
+
+- `typecheck`: TypeScript, no output or incremental cache.
+- `lint`: read-only Biome checks; `lint:fix` applies unsafe fixes.
+- `format`: formatting with writes.
+- `test`: network-disabled SQLite and rendering tests.
+- `test:d1`: isolated workerd/D1 integration tests.
+- `build:local:worker`: synthetic Next/OpenNext build, no provider credentials required.
+- `test:worker`: run the built Worker with local HTTP doubles and exit.
+- `test:worker:serve`: the same fixture at localhost:8787 for browser tests.
+- `python tests/browser/architecture.py`: desktop/mobile acceptance using installed Playwright.
+- `dev`: Next dev with local OpenNext bindings; requires prepared local D1 and CMS configuration.
+- `build:worker`: OpenNext build using developer-provided build variables; does not deploy.
+- `typegen`: local Sanity schema extraction and type generation after schema changes.
+- `email`: React Email preview on port 3333.
+
+Stop the fixture before rebuilding; restart before each full browser run because its memory database is mutated. `next start` alone is not a Workers/D1 runtime. Removed batch-write and email-export scripts must not be restored as a bypass around business services.
 
 ## Architecture
 
-### Route Structure (Next.js App Router)
+- `src/app/(website)/(public)/`: directory, taxonomy, search, blog, pricing and CMS pages.
+- `src/app/(website)/(protected)/`: dashboard, submit/payment/publish, edit, settings and `/admin`.
+- `src/app/(sanity)/studio/`: embedded Studio; CMS staff permissions are independent of application roles.
+- `src/app/api/`: Auth.js, signed Stripe webhooks, upload, OG and controlled preview routes. Legacy send-email is disabled.
+- `src/db/` and `migrations/`: D1 schema, version records, constraints, auth adapter and atomic business transitions.
+- `src/services/` and `worker.ts`: provider integrations, outbox publication, upload and notification processing, scheduled maintenance.
+- `src/data/`: D1 application DTOs and Sanity public reads.
+- `src/sanity/`: public schemas, generated queries, anonymous published reads, separate server-only publishing and preview clients. No Sanity auth/order persistence.
+- `src/auth.ts` / `src/auth.config.ts`: Auth.js credentials/OAuth and fresh D1 role/disabled/session-version validation. Middleware handles navigation; every action/API must enforce its own authorization.
+- `src/components/`: feature directories and generated Radix/shadcn primitives; Tailwind styling.
+- `src/config/`: site, pricing and marketing configuration; feature switches in `src/lib/constants.ts`.
 
-The app uses two top-level route groups:
+Free first publication requires review; paid access skips review. Authors still control first publication. Published edits synchronize without another review. Staff hiding cannot be undone by author edits, payment or stale outbox work. Users edit their own records; EDITOR/ADMIN can edit published user content; only ADMIN changes roles or disables accounts. Stable slugs and version checks prevent lost edits. Render user content as safe Markdown, never executable MDX.
 
-- `src/app/(website)/` - Main website with nested groups:
-  - `(public)/` - Public pages: home, search, item, category, tag, collection, blog, pricing
-  - `(protected)/` - Auth-required pages: dashboard, settings, submit, edit
-  - `(newsletter)/` - Newsletter unsubscribe
-  - `auth/` - Login, register, reset password, email verification
-- `src/app/(sanity)/` - Sanity Studio admin interface (accessible at `/studio`)
-- `src/app/api/` - API routes: auth, webhook (Stripe), og images, draft mode, send-email, upload-image
+## Environment and Validation
 
-### Route Protection
+Use `.env.example` for real variable names and `.dev.vars.example` only for synthetic local fixtures. Key names include `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SANITY_PROJECT_ID`, `NEXT_PUBLIC_SANITY_DATASET`, `AUTH_SECRET`, `SANITY_PUBLISH_TOKEN`, `SANITY_PREVIEW_TOKEN`, `STRIPE_API_KEY`, `STRIPE_WEBHOOK_SECRET`, and optional Resend / AI keys. Never place secrets in `NEXT_PUBLIC_*`. Platform setup instructions and SQL order are in `docs/web-deployment.md`.
 
-`src/routes.ts` defines public routes, auth routes, and API auth prefix. `src/middleware.ts` enforces access control. Authenticated users on auth routes redirect to `/dashboard`.
-
-### Data Layer
-
-- **Sanity CMS** is the primary content store. Schemas live in `src/sanity/schemas/documents/` organized by domain: `directory/` (item, category, tag, collection, group), `blog/` (post, author), `page/`, `order/`, `auth/`, and `settings.ts`.
-- **`src/data/`** contains data access functions (item.ts, blog.ts, collection.ts, user.ts, account.ts, order.ts, submission.ts, etc.) used by server components and actions.
-- **`src/sanity/lib/`** has Sanity client utilities and GROQ query helpers.
-- **`sanity.types.ts`** contains auto-generated TypeScript types from Sanity schemas (regenerate with `pnpm typegen`).
-
-### Server Actions
-
-`src/actions/` contains all server actions for mutations: authentication (login, register, reset), item operations (submit, edit, publish, unpublish), payment (checkout sessions, customer portal), settings, newsletter subscription, and admin operations.
-
-### Key Integrations
-
-- **Auth**: NextAuth v5 (beta.18) configured in `src/auth.ts` and `src/auth.config.ts`. Supports credentials + OAuth providers.
-- **Payments**: Stripe via `src/lib/stripe.ts`, with checkout session creation in actions and webhook handling in `src/app/api/webhook/route.ts`.
-- **AI**: Vercel AI SDK with multiple providers (OpenAI, Google, DeepSeek, xAI, OpenRouter) for content generation assistance.
-- **Email**: React Email templates in `emails/` sent via Resend (`src/lib/mail.ts`).
-- **Analytics**: OpenPanel integration (`@openpanel/nextjs`).
-- **Image metadata**: Microlink (`@microlink/mql`) for fetching website screenshots/metadata.
-
-### Components Organization
-
-`src/components/` is organized by feature domain: `auth/`, `blog/`, `item/`, `category/`, `collection/`, `tag/`, `dashboard/`, `payment/`, `pricing/`, `search/`, `submit/`, `edit/`, `publish/`, `newsletter/`, `settings/`, `home/` (+ `home2/`, `home3/` variants), `layout/`, `shared/`, `icons/`, and `ui/` (shadcn/ui primitives).
-
-### Configuration
-
-- `src/config/site.ts` - Site-wide settings (name, URL, description)
-- `src/config/price.ts` - Pricing plans configuration
-- `src/config/dashboard.ts` - Dashboard navigation
-- `src/config/hero.ts`, `footer.ts`, `faq.ts`, `marketing.ts` - Landing page sections
-- `src/lib/constants.ts` - Shared constants
-- `src/lib/schemas.ts` - Zod validation schemas used across forms and actions
-
-### Styling
-
-Tailwind CSS with `tailwind.config.ts`. UI primitives are Radix UI-based shadcn/ui components in `src/components/ui/`. Biome ignores `src/components/ui/*.tsx` (generated code).
-
-### Environment
-
-Copy `.env.example` to `.env`. Key variables: `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SANITY_PROJECT_ID`, `NEXT_PUBLIC_SANITY_DATASET`, `SANITY_API_TOKEN`, `NEXTAUTH_SECRET`, `STRIPE_SECRET_KEY`, Resend API key, and AI provider keys.
+There is no legacy-data migration or temporary-image R2. Public HTML, RSC, JSON and Sanity projections must exclude email, password, tokens, orders, internal notes and business owner fields. Local tests do not prove actual Worker package/CPU limits, provider authentication, or CMS permissions; keep human-step tasks open until the developer supplies evidence.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:970c3bf2 -->
 ## Beads Issue Tracker

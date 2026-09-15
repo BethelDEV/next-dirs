@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card";
+import type { SubmissionDto as ItemInfo } from "@/db/listings";
 import {
   type BadgeStyle,
   BadgeStyles,
@@ -7,7 +8,6 @@ import {
   getBadgeStyle,
 } from "@/lib/submission";
 import { cn } from "@/lib/utils";
-import type { ItemInfo } from "@/types";
 import {
   Popover,
   PopoverContent,
@@ -43,7 +43,9 @@ export default function SubmissionStatus({ item }: SubmissionStatusProps) {
   const status =
     item.pricePlan === PricePlans.FREE
       ? item.freePlanStatus
-      : item.proPlanStatus;
+      : item.pricePlan === PricePlans.SPONSOR
+        ? item.sponsorPlanStatus
+        : item.proPlanStatus;
 
   return (
     <div>

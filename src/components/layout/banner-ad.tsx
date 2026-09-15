@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { getBannerAd } from '@/actions/get-banner-ad';
-import { useEffect, useState } from 'react';
+import { getBannerAd } from "@/actions/get-banner-ad";
+import { useEffect, useState } from "react";
 
 interface AdData {
   content: string;
@@ -10,8 +10,8 @@ interface AdData {
 
 /**
  * Banner Ad
- * 
- * Note: 
+ *
+ * Note:
  * 1. we only show the first sponsor item as banner ad
  * 2. the banner ad is sticky at the top of the page
  */
@@ -26,7 +26,7 @@ export function BannerAd() {
           setAdData(result.data);
         }
       } catch (error) {
-        console.error('Failed to fetch ad data:', error);
+        console.error("Failed to fetch ad data:", error);
       }
     };
 
@@ -49,4 +49,4 @@ export function BannerAd() {
       </div>
     </div>
   );
-} 
+}

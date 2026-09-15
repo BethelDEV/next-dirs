@@ -23,15 +23,15 @@ import { notFound } from "next/navigation";
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata | undefined> {
   const collection = await sanityFetch<CollectionQueryResult>({
     query: collectionQuery,
-    params: { slug: params.slug },
+    params: { slug: (await params).slug },
   });
   if (!collection) {
     console.warn(
-      `generateMetadata, collection not found for slug: ${params.slug}`,
+      `generateMetadata, collection not found for slug: ${(await params).slug}`,
     );
     return;
   }
@@ -44,7 +44,7 @@ export async function generateMetadata({
   return constructMetadata({
     title: `${collection.name}`,
     description: collection.description,
-    canonicalUrl: `${siteConfig.url}/collection/${params.slug}`,
+    canonicalUrl: `${siteConfig.url}/collection/${(await params).slug}`,
     // image: ogImageUrl.toString(),
   });
 }
@@ -53,16 +53,16 @@ export default async function CollectionPage({
   params,
   searchParams,
 }: {
-  params: { slug: string };
-  searchParams?: { [key: string]: string | string[] | undefined };
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const collection = await sanityFetch<CollectionQueryResult>({
     query: collectionQuery,
-    params: { slug: params.slug },
+    params: { slug: (await params).slug },
   });
   if (!collection) {
     console.warn(
-      `CollectionPage, collection not found for slug: ${params.slug}`,
+      `CollectionPage, collection not found for slug: ${(await params).slug}`,
     );
     return notFound();
   }
@@ -75,12 +75,14 @@ export default async function CollectionPage({
   const showSponsor = true;
   const hasSponsorItem = showSponsor && sponsorItems.length > 0;
 
-  const { sort, page } = searchParams as { [key: string]: string };
+  const { sort, page } = ((await searchParams) ?? {}) as {
+    [key: string]: string;
+  };
   const { sortKey, reverse } =
     SORT_FILTER_LIST.find((item) => item.slug === sort) || DEFAULT_SORT;
   const currentPage = page ? Number(page) : 1;
   const { items, totalCount } = await getItems({
-    collection: params.slug,
+    collection: (await params).slug,
     sortKey,
     reverse,
     currentPage,
@@ -123,7 +125,7 @@ export default async function CollectionPage({
 
               <div className="mt-8 flex items-center justify-center">
                 <CustomPagination
-                  routePrefix={`/collection/${params.slug}`}
+                  routePrefix={`/collection/${(await params).slug}`}
                   totalPages={totalPages}
                 />
               </div>

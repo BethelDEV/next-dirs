@@ -29,7 +29,7 @@ export function GET(req: Request) {
 
     return new ImageResponse(
       <div
-        tw="w-[1200px] h-[630px] size-full flex flex-col items-center justify-center"
+        tw="w-[1200px] h-[630px] flex flex-col items-center justify-center"
         style={{
           color: paint,
           background:
@@ -39,7 +39,7 @@ export function GET(req: Request) {
         }}
       >
         <div
-          tw="size-full flex flex-col items-center justify-center"
+          tw="w-full h-full flex flex-col items-center justify-center"
           style={{
             whiteSpace: "pre-wrap",
           }}

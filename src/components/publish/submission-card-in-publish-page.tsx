@@ -3,7 +3,7 @@
 import { PublishNowButton } from "@/components/publish/publish-now-button";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { ItemInfo } from "@/types";
+import type { SubmissionDto as ItemInfo } from "@/db/listings";
 import { CalendarDaysIcon, PartyPopperIcon } from "lucide-react";
 import Link from "next/link";
 import SubmissionCardImage from "../dashboard/submission-card-image";
@@ -33,6 +33,15 @@ export default function SubmissionCardInPublishPage({
               {item.description}
             </p>
 
+            <p className="text-sm text-muted-foreground">
+              {item.adminHidden
+                ? "Hidden by staff"
+                : item.publishRequested && !item.publishDate
+                  ? "Publication requested. Sync is pending."
+                  : item.syncStatus === "pending"
+                    ? "Saved changes are syncing."
+                    : ""}
+            </p>
             {/* action buttons */}
             <div className="pt-4">
               {item.publishDate ? (
@@ -67,23 +76,13 @@ export default function SubmissionCardInPublishPage({
                       asChild
                       className="group overflow-hidden flex-1 w-full"
                     >
-                      {item.pricePlan === 'sponsor' ? (
-                        <Link
-                          href={`mailto:support@example.com?subject=Schedule%20Publication%20Time%20for%20${encodeURIComponent(item.name)}`}
-                          className="flex items-center justify-center space-x-2"
-                        >
-                          <CalendarDaysIcon className="w-4 h-6 icon-scale" />
-                          <span className="">Schedule ad time</span>
-                        </Link>
-                      ) : (
-                        <Link
-                          href="/dashboard"
-                          className="flex items-center justify-center space-x-2"
-                        >
-                          <CalendarDaysIcon className="w-4 h-6 icon-scale" />
-                          <span className="">Publish Later</span>
-                        </Link>
-                      )}
+                      <Link
+                        href="/dashboard"
+                        className="flex items-center justify-center space-x-2"
+                      >
+                        <CalendarDaysIcon className="w-4 h-6" />
+                        <span>Publish Later</span>
+                      </Link>
                     </Button>
                   </div>
                 </div>

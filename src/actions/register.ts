@@ -1,53 +1,37 @@
 "use server";
-
-import { getUserByEmail } from "@/data/user";
+import { getDb } from "@/db";
+import { hashToken, limitAction } from "@/db/identity";
 import { sendVerificationEmail } from "@/lib/mail";
 import { RegisterSchema } from "@/lib/schemas";
 import { generateVerificationToken } from "@/lib/tokens";
-import { sanityClient } from "@/sanity/lib/client";
-import { UserRole } from "@/types/user-role";
-import { uuid } from "@sanity/uuid";
 import bcrypt from "bcryptjs";
-import type * as z from "zod";
-
+import type { z } from "zod";
 export type ServerActionResponse = {
   status: "success" | "error";
   message?: string;
 };
-
 export async function register(
   values: z.infer<typeof RegisterSchema>,
 ): Promise<ServerActionResponse> {
-  const validatedFields = RegisterSchema.safeParse(values);
-
-  if (!validatedFields.success) {
-    return { status: "error", message: "Invalid Fields!" };
+  const parsed = RegisterSchema.safeParse(values);
+  if (!parsed.success) return { status: "error", message: "Invalid fields" };
+  const { name, password } = parsed.data;
+  const email = parsed.data.email.toLowerCase();
+  const db = await getDb();
+  if (!(await limitAction(db, `register:${await hashToken(email)}`, 3, 3600)))
+    return { status: "error", message: "Please try later" };
+  const result = await db
+    .prepare(
+      "INSERT INTO users(id,name,email,password) VALUES(?,?,?,?) ON CONFLICT(email) DO NOTHING",
+    )
+    .bind(crypto.randomUUID(), name, email, await bcrypt.hash(password, 12))
+    .run();
+  if (result.meta.changes) {
+    const token = await generateVerificationToken(email);
+    await sendVerificationEmail(email, token.token);
   }
-
-  const { email, password, name } = validatedFields.data;
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  const existingUser = await getUserByEmail(email);
-  if (existingUser) {
-    return { status: "error", message: "Email already being used" };
-  }
-
-  await sanityClient.create({
-    _type: "user",
-    _id: `user.${uuid()}`,
-    name,
-    email,
-    role: UserRole.USER,
-    password: hashedPassword,
-  });
-
-  const verificationToken = await generateVerificationToken(email);
-  await sendVerificationEmail(
-    verificationToken.identifier,
-    verificationToken.token,
-  );
   return {
     status: "success",
-    message: "Please check your email for verification",
+    message: "If registration is available, check your email for verification",
   };
 }

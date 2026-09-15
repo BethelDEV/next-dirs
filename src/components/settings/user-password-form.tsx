@@ -110,11 +110,7 @@ export function UserPasswordForm() {
             </div>
           </div>
           <div className="flex justify-start">
-            <Button
-              type="submit"
-              disabled={isPending}
-              className=""
-            >
+            <Button type="submit" disabled={isPending} className="">
               {isPending ? (
                 <div className="flex items-center gap-2">
                   <Icons.spinner className="size-4 animate-spin" />

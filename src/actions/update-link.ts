@@ -1,56 +1,35 @@
 "use server";
-
-import { unstable_update } from "@/auth";
-import { getUserById } from "@/data/user";
+import { getDb } from "@/db";
 import { currentUser } from "@/lib/auth";
+import { safeContentUrl } from "@/lib/content-url";
 import { type UserLinkData, UserLinkSchema } from "@/lib/schemas";
-import { sanityClient } from "@/sanity/lib/client";
 import { revalidatePath } from "next/cache";
-
-export type ServerActionResponse = {
-  status: "success" | "error";
-  message?: string;
-};
-
-export async function updateUserLink(
-  values: UserLinkData,
-): Promise<ServerActionResponse> {
-  try {
-    const user = await currentUser();
-    if (!user) {
-      return { status: "error", message: "Unauthorized" };
-    }
-
-    const dbUser = await getUserById(user.id);
-    if (!dbUser) {
-      return { status: "error", message: "User not found" };
-    }
-
-    // console.log('updateUserLink, values:', values);
-    const { link } = UserLinkSchema.parse(values);
-
-    const updatedUser = await sanityClient
-      .patch(dbUser._id)
-      .set({
-        link: link,
-      })
-      .commit();
-    // console.log("updateUserLink, user:", updatedUser);
-
-    // unstable update in Beta version
-    unstable_update({
-      user: {
-        link: updatedUser.link,
-      },
-    });
-
-    revalidatePath("/settings");
-    return { status: "success", message: "User link updated!" };
-  } catch (error) {
-    console.log("updateUserLink, error", error);
-    return {
-      status: "error",
-      message: "Failed to update user link!",
-    };
-  }
+export async function updateUserLink(values: UserLinkData) {
+  const user = await currentUser();
+  const parsed = UserLinkSchema.safeParse(values);
+  if (
+    !user ||
+    !parsed.success ||
+    (parsed.data.link && !safeContentUrl(parsed.data.link))
+  )
+    return { status: "error", message: "Invalid request" };
+  const db = await getDb();
+  const event = crypto.randomUUID();
+  await db.batch([
+    db
+      .prepare("UPDATE users SET link=? WHERE id=? AND disabled=0")
+      .bind(parsed.data.link, user.id),
+    db
+      .prepare(
+        "UPDATE listings SET desired_version=desired_version+1,updated_at=? WHERE owner_id=? AND (first_published_at IS NOT NULL OR publish_requested=1)",
+      )
+      .bind(new Date().toISOString(), user.id),
+    db
+      .prepare(
+        "INSERT INTO outbox(id,listing_id,version) SELECT ?||':'||id,id,desired_version FROM listings WHERE owner_id=? AND (first_published_at IS NOT NULL OR publish_requested=1)",
+      )
+      .bind(event, user.id),
+  ]);
+  revalidatePath("/settings");
+  return { status: "success", message: "Link updated" };
 }

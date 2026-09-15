@@ -3,10 +3,16 @@
 import { createCheckoutSession } from "@/actions/create-checkout-session";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
+import type { SubmissionDto as ItemInfo } from "@/db/listings";
 import { PricePlans, ProPlanStatus, SponsorPlanStatus } from "@/lib/submission";
 import { cn } from "@/lib/utils";
-import type { ItemInfo, PricePlan } from "@/types";
-import { ArrowRightIcon, ArrowUpLeftIcon, CheckCircleIcon, RocketIcon } from "lucide-react";
+import type { PricePlan } from "@/types";
+import {
+  ArrowRightIcon,
+  ArrowUpLeftIcon,
+  CheckCircleIcon,
+  RocketIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
@@ -30,8 +36,13 @@ export function SponsorPlanButton({
 
   const handleCreateCheckoutSession = () => {
     startTransition(async () => {
-      createCheckoutSession(item._id, pricePlan.stripePriceId, PricePlans.SPONSOR)
+      await createCheckoutSession(
+        item._id,
+        pricePlan.stripePriceId,
+        PricePlans.SPONSOR,
+      )
         .then((data) => {
+          if (data?.status === "error") toast.error(data.message);
           console.log("createCheckoutSession, data:", data);
           // already redirected to stripe checkout page in server action
         })

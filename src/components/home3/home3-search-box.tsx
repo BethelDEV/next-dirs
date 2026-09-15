@@ -32,7 +32,6 @@ export default function HomeSearchBox({ urlPrefix }: SearchBoxProps) {
     }
   }, [searchParams]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
     if (debouncedQuery !== lastExecutedQuery.current) {
       const newParams = new URLSearchParams(searchParams?.toString());
@@ -52,7 +51,7 @@ export default function HomeSearchBox({ urlPrefix }: SearchBoxProps) {
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     isUserTypingRef.current = true;
     setSearchQuery(e.target.value);
-    
+
     // Reset the flag to allow updates after URL changes (but give enough time to complete the current input)
     setTimeout(() => {
       isUserTypingRef.current = false;

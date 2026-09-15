@@ -21,8 +21,8 @@ const categoryFields = /* groq */ `
 export const groupFields = /* groq */ `
   ...,
   "categories": *[_type=='category' && references(^._id)] | order(priority desc, _createdAt asc)
-  { 
-    ..., 
+  {
+    ...,
   }
 `;
 
@@ -47,7 +47,6 @@ export const itemSimpleFields = /* groq */ `
   sponsor,
   sponsorStartDate,
   sponsorEndDate,
-  note,
   featured,
   icon {
     ...,
@@ -60,15 +59,8 @@ export const itemSimpleFields = /* groq */ `
     "imageColor": asset->metadata.palette.dominant.background,
   },
   publishDate,
-  paid,
-  order,
-  pricePlan,
-  freePlanStatus,
-  proPlanStatus,
-  sponsorPlanStatus,
-  rejectionReason,
-  submitter->,
-  collections[]->,
+  submitter{name,image,link},
+  "collections": *[_type=="collection" && references(^._id)]{_id,name,slug},
   categories[]->,
   tags[]->,
 `;
@@ -81,31 +73,31 @@ const itemFields = /* groq */ `
 // auto generate related items
 const itemFieldsWithRelated = /* groq */ `
   introduction,
-  "related": *[_type == "item" && defined(slug.current) 
-    && defined(publishDate) 
-    && forceHidden != true
-    && sponsor != true
-    && count(categories[@._ref in ^.^.categories[]._ref]) > 0 && _id != ^._id] 
-    | order(publishedDate desc, _createdAt desc) [0...3] {
+  "related": *[_type == "item" && visible == true && defined(slug.current)
+    && defined(publishDate)
+    && visible == true
+    && !(sponsor == true && sponsorStartDate <= now() && sponsorEndDate > now())
+    && count(categories[@._ref in ^.categories[]._ref]) > 0 && _id != ^._id]
+    | order(publishDate desc, _createdAt desc) [0...3] {
       ${itemSimpleFields}
   },
   ${itemSimpleFields}
 `;
 
-export const itemByIdQuery = defineQuery(`*[_type == "item" && _id == $id][0] {
+export const itemByIdQuery = defineQuery(`*[_type == "item" && visible == true && _id == $id][0] {
   ${itemSimpleFields}
 }`);
 
-export const itemInfoBySlugQuery = defineQuery(`*[_type == "item" && slug.current == $slug][0] {
+export const itemInfoBySlugQuery = defineQuery(`*[_type == "item" && visible == true && slug.current == $slug][0] {
   ${itemSimpleFields}
 }`);
 
-export const itemFullInfoByIdQuery = defineQuery(`*[_type == "item" && _id == $id][0] {
+export const itemFullInfoByIdQuery = defineQuery(`*[_type == "item" && visible == true && _id == $id][0] {
   ${itemFields}
 }`);
 
-export const itemFullInfoBySlugQuery = defineQuery(`*[_type == "item" && slug.current == $slug 
-&& forceHidden != true] [0] {
+export const itemFullInfoBySlugQuery = defineQuery(`*[_type == "item" && visible == true && slug.current == $slug
+&& visible == true] [0] {
   ${itemFieldsWithRelated}
 }`);
 
@@ -114,43 +106,43 @@ export const itemFullInfoBySlugQuery = defineQuery(`*[_type == "item" && slug.cu
  * but it is used to generate the type of ItemListQueryResult,
  * if you want to change this query, please update data/item.ts
  */
-export const itemListQuery = defineQuery(`*[_type == "item" && defined(slug.current) 
+export const itemListQuery = defineQuery(`*[_type == "item" && visible == true && defined(slug.current)
   && defined(publishDate)
-  && forceHidden != true
-  && sponsor != true]
+  && visible == true
+  && !(sponsor == true && sponsorStartDate <= now() && sponsorEndDate > now())]
   | order(coalesce(featured, false) desc, publishDate desc) {
     ${itemSimpleFields}
 }`);
 
 // get sponsor items
-export const sponsorItemListQuery = defineQuery(`*[_type == "item" && defined(slug.current) 
+export const sponsorItemListQuery = defineQuery(`*[_type == "item" && visible == true && defined(slug.current)
   && defined(publishDate)
-  && forceHidden != true
+  && visible == true
   && sponsor == true
   && sponsorStartDate <= now()
-  && sponsorEndDate >= now()] 
+  && sponsorEndDate >= now()]
   | order(coalesce(featured, false) desc, publishDate desc) {
     ${itemSimpleFields}
 }`);
 
-export const itemListOfFeaturedQuery = defineQuery(`*[_type == "item" && defined(slug.current) 
-  && defined(publishDate) 
-  && forceHidden != true 
-  && sponsor != true
-  && featured == true] 
+export const itemListOfFeaturedQuery = defineQuery(`*[_type == "item" && visible == true && defined(slug.current)
+  && defined(publishDate)
+  && visible == true
+  && !(sponsor == true && sponsorStartDate <= now() && sponsorEndDate > now())
+  && featured == true]
   | order(coalesce(featured, false) desc, publishDate desc) [0...$count] {
     ${itemSimpleFields}
 }`);
 
-export const itemListOfLatestQuery = defineQuery(`*[_type == "item" && defined(slug.current) 
-  && defined(publishDate) 
-  && forceHidden != true
-  && sponsor != true] 
+export const itemListOfLatestQuery = defineQuery(`*[_type == "item" && visible == true && defined(slug.current)
+  && defined(publishDate)
+  && visible == true
+  && !(sponsor == true && sponsorStartDate <= now() && sponsorEndDate > now())]
   | order(coalesce(featured, false) desc, publishDate desc) [0...$count] {
     ${itemSimpleFields}
 }`);
 
-export const collectionListQuery = defineQuery(`*[_type == "collection" && defined(slug.current)] 
+export const collectionListQuery = defineQuery(`*[_type == "collection" && defined(slug.current)]
   | order(priority desc) {
     ${collectionFields}
 }`);
@@ -163,7 +155,7 @@ export const groupListQuery = groq`*[_type=="group"] | order(priority desc, _cre
   ${groupFields}
 }`;
 
-export const categoryListQuery = defineQuery(`*[_type == "category" && defined(slug.current)] 
+export const categoryListQuery = defineQuery(`*[_type == "category" && defined(slug.current)]
   | order(priority desc) {
     ${categoryFields}
 }`);
@@ -172,7 +164,7 @@ export const categoryQuery = defineQuery(`*[_type == "category" && slug.current 
   ${categoryFields}
 }`);
 
-export const tagListQuery = defineQuery(`*[_type == "tag" && defined(slug.current)] 
+export const tagListQuery = defineQuery(`*[_type == "tag" && defined(slug.current)]
   | order(slug.current asc) {
     ${tagFields}
 }`);
@@ -182,21 +174,6 @@ export const tagQuery = defineQuery(`*[_type == "tag" && slug.current == $slug][
 }`);
 
 // ======================================================================================================================
-
-/**
- * Submission Queries
- */
-
-/**
- * NOTICE: this query is not used in the app,
- * but it is used to generate the type of SubmissionListQueryResult,
- * if you want to change this query, please update data/submission.ts
- */
-export const submissionListQuery = defineQuery(`*[_type == "item" && defined(slug.current)
-  && submitter._ref == $userId] 
-  | order(_createdAt desc) {
-    ${itemSimpleFields}
-}`);
 
 // Page Queries
 export const pageQuery = defineQuery(`
@@ -234,7 +211,7 @@ export const blogPostSimpleFields = /* groq */ `
     "imageColor": asset->metadata.palette.dominant.background,
   },
   publishDate,
-  author->,
+  author->{_id,name,image,link},
   categories[]->,
 `;
 
@@ -252,9 +229,9 @@ const blogPostFields = /* groq */ `
     }
   },
   ${blogPostSimpleFields}
-  
+
   // "estReadingTime": round(length(pt::text(body)) / 5 / 180 ),
-  // "related": *[_type == "blogPost" && count(categories[@._ref in ^.^.categories[]._ref]) > 0 ] | order(publishedDate desc, _createdAt desc) [0...2] {
+  // "related": *[_type == "blogPost" && count(categories[@._ref in ^.categories[]._ref]) > 0 ] | order(publishDate desc, _createdAt desc) [0...2] {
   //   slug,
   //   title,
   //   excerpt,
@@ -272,7 +249,7 @@ const blogCategoryFields = /* groq */ `
 `;
 
 export const blogCategoryListQuery = defineQuery(`
-  *[_type == "blogCategory" && defined(slug.current)] 
+  *[_type == "blogCategory" && defined(slug.current)]
   | order(priority desc) {
     ${blogCategoryFields}
 }`);
@@ -299,13 +276,13 @@ export const blogPostMetadataQuery = defineQuery(`
  * if you want to change this query, please update data/blog.ts
  */
 export const blogPostListQuery = defineQuery(`
-  *[_type == "blogPost" && defined(slug.current) && defined(publishDate)] 
+  *[_type == "blogPost" && defined(slug.current) && defined(publishDate)]
   | order(publishDate desc) {
     ${blogPostSimpleFields}
 }`);
 
 export const blogPostListOfLatestQuery = defineQuery(`
-  *[_type == "blogPost" && defined(slug.current) && defined(publishDate)] 
+  *[_type == "blogPost" && defined(slug.current) && defined(publishDate)]
   | order(publishDate desc) [0...$count] {
     ${blogPostSimpleFields}
 }`);
@@ -329,64 +306,51 @@ export const blogCategoryWithCountQuery = groq`
 // ======================================================================================================================
 
 /**
- * User Queries
- */
-
-export const userWithAccountsQuery = defineQuery(`
-  *[_type == "user" && _id == $id][0] {
-    ...,
-    accounts[]->,
-  }
-`);
-
-// ======================================================================================================================
-
-/**
  * Sitemap Queries
  */
 
-export const itemListQueryForSitemap = groq`*[_type == "item" && defined(slug.current) && defined(publishDate)] | order(_createdAt asc) {
+export const itemListQueryForSitemap = groq`*[_type == "item" && visible == true && defined(slug.current) && defined(publishDate)] | order(_createdAt asc) {
   _id,
   _updatedAt,
   "slug": slug.current,
 }`;
 
 export const categoryListQueryForSitemap = groq`*[_type == "category" && defined(slug.current)] | order(_createdAt asc) {
-  _id,  
+  _id,
   _updatedAt,
   "slug": slug.current,
-  "count": count(*[_type == "item" && defined(publishDate) && forceHidden != true && references(^._id)])
+  "count": count(*[_type == "item" && visible == true && defined(publishDate) && visible == true && references(^._id)])
 }`;
 
 export const tagListQueryForSitemap = groq`*[_type == "tag" && defined(slug.current)] | order(_createdAt asc) {
-  _id,  
+  _id,
   _updatedAt,
   "slug": slug.current,
-  "count": count(*[_type == "item" && defined(publishDate) && forceHidden != true && references(^._id)])
+  "count": count(*[_type == "item" && visible == true && defined(publishDate) && visible == true && references(^._id)])
 }`;
 
 export const collectionListQueryForSitemap = groq`*[_type == "collection" && defined(slug.current)] | order(_createdAt asc) {
-  _id,  
+  _id,
   _updatedAt,
   "slug": slug.current,
-  "count": count(*[_type == "item" && defined(publishDate) && forceHidden != true && references(^._id)])
+  "count": count(*[_type == "item" && visible == true && defined(publishDate) && visible == true && _id in ^.items[]._ref])
 }`;
 
 export const blogListQueryForSitemap = groq`*[_type == "blogPost" && defined(slug.current) && defined(publishDate)] | order(publishDate desc, _createdAt asc) {
-  _id,  
+  _id,
   _updatedAt,
   "slug": slug.current,
 }`;
 
 export const blogCategoryListQueryForSitemap = groq`*[_type == "blogCategory" && defined(slug.current)] | order(_createdAt asc) {
-  _id,  
+  _id,
   _updatedAt,
   "slug": slug.current,
   "count": count(*[_type == "blogPost" && defined(publishDate) && references(^._id)])
 }`;
 
 export const pageListQueryForSitemap = groq`*[_type == "page" && defined(slug.current)] | order(_createdAt asc) {
-  _id,  
+  _id,
   _updatedAt,
   "slug": slug.current,
 }`;

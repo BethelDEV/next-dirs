@@ -1,12 +1,24 @@
-import { QUERY_FILTER_LIST, SORT_FILTER_LIST, SUPPORT_CATEGORY_GROUP } from "@/lib/constants";
+import {
+  QUERY_FILTER_LIST,
+  SORT_FILTER_LIST,
+  SUPPORT_CATEGORY_GROUP,
+} from "@/lib/constants";
 import type {
   CategoryListQueryResult,
   GroupListQueryResult,
   TagListQueryResult,
 } from "@/sanity.types";
 import { sanityFetch } from "@/sanity/lib/fetch";
-import { categoryListQuery, groupListQuery, tagListQuery } from "@/sanity/lib/queries";
-import { type CategoryFilterItem, HomeSearchFilterClient, type TagFilterItem } from "./home-search-filter-client";
+import {
+  categoryListQuery,
+  groupListQuery,
+  tagListQuery,
+} from "@/sanity/lib/queries";
+import {
+  type CategoryFilterItem,
+  HomeSearchFilterClient,
+  type TagFilterItem,
+} from "./home-search-filter-client";
 
 interface HomeSearchFilterProps {
   urlPrefix: string;
@@ -27,11 +39,12 @@ export async function HomeSearchFilter({ urlPrefix }: HomeSearchFilterProps) {
     ]);
 
     // in mobile view, we need to show the group name before the category name
-    categories = groupList.flatMap((group) => 
-      group.categories?.map((category) => ({
-        slug: category.slug.current,
-        name: `${group.name} / ${category.name}`,
-      })) || []
+    categories = groupList.flatMap(
+      (group) =>
+        group.categories?.map((category) => ({
+          slug: category.slug.current,
+          name: `${group.name} / ${category.name}`,
+        })) || [],
     );
     tags = tagList.map((tag) => ({
       slug: tag.slug.current,
@@ -47,11 +60,11 @@ export async function HomeSearchFilter({ urlPrefix }: HomeSearchFilterProps) {
       }),
     ]);
 
-   categories = categoryList.map((category) => ({
+    categories = categoryList.map((category) => ({
       slug: category.slug.current,
       name: category.name,
     }));
-   tags = tagList.map((tag) => ({
+    tags = tagList.map((tag) => ({
       slug: tag.slug.current,
       name: tag.name,
     }));

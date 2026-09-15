@@ -48,7 +48,7 @@ export default defineType({
       name: "author",
       title: "Author",
       type: "reference",
-      to: [{ type: "user" }],
+      to: [{ type: "publicProfile" }],
       validation: (rule) => rule.required(),
     }),
     defineField({
@@ -96,7 +96,9 @@ export default defineType({
       date: "publishDate",
     },
     prepare({ title, media, date }) {
-      const subtitle = date ? format(parseISO(date), "yyyy/MM/dd") : "unpublished";
+      const subtitle = date
+        ? format(parseISO(date), "yyyy/MM/dd")
+        : "unpublished";
       return {
         title,
         media,

@@ -3,6 +3,7 @@
 import { useTheme } from "next-themes";
 import { useMemo } from "react";
 import React from "react";
+import { renderMarkdownPreview } from "./markdown-preview";
 
 // if directly import, frontend error: document is not defined
 // import { SimpleMdeReact } from "react-simplemde-editor";
@@ -47,6 +48,8 @@ const CustomMde = React.forwardRef<HTMLDivElement, CustomMdeProps>(
         status: false,
         autofocus: false,
         spellChecker: false,
+        autoDownloadFontAwesome: false,
+        previewRender: renderMarkdownPreview,
         placeholder: "Enter your content here...",
         toolbar: [
           "heading",
@@ -81,7 +84,7 @@ const CustomMde = React.forwardRef<HTMLDivElement, CustomMdeProps>(
         />
       </div>
     );
-  }
+  },
 );
 
 CustomMde.displayName = "CustomMde";

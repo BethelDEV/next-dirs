@@ -21,7 +21,7 @@ export const metadata = constructMetadata({
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   console.log("HomePage, searchParams", searchParams);
 
@@ -44,7 +44,7 @@ export default async function HomePage({
     page,
     q: query,
     f: filter,
-  } = searchParams as { [key: string]: string };
+  } = ((await searchParams) ?? {}) as { [key: string]: string };
   const { sortKey, reverse } =
     SORT_FILTER_LIST.find((item) => item.slug === sort) || DEFAULT_SORT;
   const currentPage = page ? Number(page) : 1;

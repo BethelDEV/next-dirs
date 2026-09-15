@@ -1,23 +1,24 @@
-import { sanityClient } from "@/sanity/lib/client";
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
-
-export async function POST(request: NextRequest) {
+import { boundedBody } from "@/lib/bounded-body";
+import { requireActor } from "@/services/listing-actions";
+import { uploadImage } from "@/services/uploads";
+export async function POST(request: Request) {
   try {
-    const formData = await request.formData();
-    const file = formData.get("file") as File;
-
-    if (!file) {
-      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
-    }
-
-    const asset = await sanityClient.assets.upload("image", file);
-    return NextResponse.json({ asset });
-  } catch (error) {
-    console.error("Error uploading image:", error);
-    return NextResponse.json(
-      { error: "Failed to upload image" },
-      { status: 500 },
+    const { db, actor } = await requireActor();
+    const bytes = await boundedBody(request, 5 * 1024 * 1024 + 16384);
+    const form = await new Response(bytes, {
+      headers: { "content-type": request.headers.get("content-type") ?? "" },
+    }).formData();
+    const file = form.get("file");
+    if (!(file instanceof File))
+      return Response.json({ error: "An image is required" }, { status: 400 });
+    const asset = await uploadImage(
+      db,
+      actor,
+      new Uint8Array(await file.arrayBuffer()),
+      file.type,
     );
+    return Response.json({ asset });
+  } catch {
+    return Response.json({ error: "Image upload failed" }, { status: 400 });
   }
 }

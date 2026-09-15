@@ -28,9 +28,7 @@ export default function ImageUpload({
 
   // Add effect to watch currentImageUrl changes
   useEffect(() => {
-    if (currentImageUrl !== imageUrl) {
-      setImageUrl(currentImageUrl);
-    }
+    setImageUrl(currentImageUrl);
   }, [currentImageUrl]);
 
   const uploadImage = async (file: File) => {
@@ -56,7 +54,10 @@ export default function ImageUpload({
         return null;
       }
 
-      const { asset } = await response.json();
+      const data: unknown = await response.json();
+      if (!data || typeof data !== "object" || !("asset" in data))
+        throw new Error("Invalid upload response");
+      const asset = data.asset as { _id: string; url: string };
       return asset;
     } catch (error) {
       console.error("uploadImage, error uploading image:", error);
@@ -145,11 +146,12 @@ export default function ImageUpload({
         {/* uploaded state */}
         {imageUrl && !uploading && (
           <div className="p-4 flex flex-col items-center justify-center gap-4 w-full h-full">
-            <div className={cn(
-              "relative group overflow-hidden rounded-lg",
+            <div
+              className={cn(
+                "relative group overflow-hidden rounded-lg",
                 type === "icon"
                   ? "w-32 h-32" // icon mode
-                  : "aspect-[16/9] h-[320px]" // image mode, fixed height
+                  : "aspect-[16/9] h-[320px]", // image mode, fixed height
               )}
             >
               <Image

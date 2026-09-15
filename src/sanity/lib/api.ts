@@ -11,7 +11,7 @@ export const previewUrl = process.env.NEXT_PUBLIC_APP_URL;
 /**
  * see https://www.sanity.io/docs/api-versioning for how versioning works
  */
-export const apiVersion = "2024-08-01";
+export const apiVersion = "2026-09-15";
 
 /**
  * As this file is reused in several other files, try to keep it lean and small.

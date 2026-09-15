@@ -21,7 +21,7 @@ export const metadata = constructMetadata({
 export default async function CategoryIndexPage({
   searchParams,
 }: {
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const sponsorItems =
     (await sanityFetch<SponsorItemListQueryResult>({
@@ -31,7 +31,9 @@ export default async function CategoryIndexPage({
   const showSponsor = true;
   const hasSponsorItem = showSponsor && sponsorItems.length > 0;
 
-  const { sort, page } = searchParams as { [key: string]: string };
+  const { sort, page } = ((await searchParams) ?? {}) as {
+    [key: string]: string;
+  };
   const { sortKey, reverse } =
     SORT_FILTER_LIST.find((item) => item.slug === sort) || DEFAULT_SORT;
   const currentPage = page ? Number(page) : 1;

@@ -1,13 +1,15 @@
 "use client";
 
+import { retryPublication } from "@/actions/moderation";
 import { PublishButton } from "@/components/dashboard/publish-button";
 import { UnpublishButton } from "@/components/dashboard/unpublish-button";
+import { RefreshPending } from "@/components/shared/refresh-pending";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { SubmissionDto as ItemInfo } from "@/db/listings";
 import { getPublishable } from "@/lib/submission";
 import { getLocaleDate } from "@/lib/utils";
-import type { ItemInfo } from "@/types";
 import { EditIcon } from "lucide-react";
 import Link from "next/link";
 import SubmissionCardImage from "./submission-card-image";
@@ -23,6 +25,12 @@ export default function SubmissionCard({ item }: SubmissionCardProps) {
 
   return (
     <Card className="flex-grow flex items-center p-4">
+      <RefreshPending
+        active={
+          item.syncStatus === "pending" ||
+          ["pending", "processing"].includes(item.paymentStatus)
+        }
+      />
       {/* Content section */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-5 md:gap-8 w-full">
         {/* Left column */}
@@ -74,11 +82,24 @@ export default function SubmissionCard({ item }: SubmissionCardProps) {
             </div>
           </div>
 
+          <p className="mt-4 text-sm text-muted-foreground">
+            {item.adminHidden
+              ? "Hidden by staff. Edits keep this restriction."
+              : `Sync: ${item.syncStatus} · Payment: ${item.paymentStatus}`}
+          </p>
           <div className="flex flex-wrap gap-4 mt-6">
             {/* publish or unpublish button */}
-            {publishable && item.publishDate && <UnpublishButton item={item} />}
-            {!item.publishDate && <PublishButton item={item} />}
+            {item.publishRequested && <UnpublishButton item={item} />}
+            {!item.publishRequested && !item.adminHidden && (
+              <PublishButton item={item} />
+            )}
 
+            {item.syncStatus === "failed" && (
+              <form action={retryPublication}>
+                <input type="hidden" name="id" value={item._id} />
+                <Button variant="outline">Retry failed sync</Button>
+              </form>
+            )}
             {/* edit button */}
             <Button asChild variant="outline" className="group overflow-hidden">
               <Link href={`/edit/${item._id}`}>

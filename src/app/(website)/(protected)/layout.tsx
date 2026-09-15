@@ -20,7 +20,24 @@ export default async function ProtectedLayout({
 
   return (
     <div className="flex flex-col min-h-screen">
-      <Navbar scroll={false} config={dashboardConfig} />
+      <Navbar
+        scroll={false}
+        config={{
+          ...dashboardConfig,
+          menus: [
+            ...dashboardConfig.menus,
+            ...(user.role === "USER"
+              ? []
+              : [
+                  {
+                    title: "Management",
+                    href: "/admin",
+                    icon: "dashboard" as const,
+                  },
+                ]),
+          ],
+        }}
+      />
 
       <main className="flex-1">
         <Container className="mt-8 pb-16">{children}</Container>

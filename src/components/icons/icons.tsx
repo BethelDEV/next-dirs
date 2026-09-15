@@ -12,7 +12,7 @@ import {
   SearchIcon,
   SettingsIcon,
   TagsIcon,
-  UploadIcon
+  UploadIcon,
 } from "lucide-react";
 import { FaBrandsGitHub } from "../icons/github";
 import { FaBrandsGoogle } from "../icons/google";

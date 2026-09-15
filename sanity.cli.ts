@@ -1,14 +1,13 @@
 import { dataset, projectId } from "@/sanity/lib/api";
 import { defineCliConfig } from "sanity/cli";
 
-/**
- * https://www.sanity.io/docs/cli
- * Build, deploy, init plugin boilerplate, run scripts, 
- * and wrangle datasets and webhooks, all from the command line
- */
+// Local schema/type generation only. Studio is served by the Worker at /studio.
 export default defineCliConfig({
-    api: {
-        projectId,
-        dataset
-    }
+  api: { projectId, dataset },
+  typegen: {
+    path: "src/sanity/lib/queries.ts",
+    generates: "sanity.types.ts",
+    schema: "schema.json",
+    overloadClientMethods: true,
+  },
 });

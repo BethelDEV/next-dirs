@@ -25,8 +25,14 @@ export const footerConfig: FooterConfig = {
       items: [
         { title: "Home 2", href: "/home2" },
         { title: "Home 3", href: "/home3" },
-        { title: "Collection 1", href: "/collection/the-best-google-analytics-alternatives-in-2024" },
-        { title: "Collection 2", href: "/collection/the-best-alternatives-to-semrush-in-2024" },
+        {
+          title: "Collection 1",
+          href: "/collection/the-best-google-analytics-alternatives-in-2024",
+        },
+        {
+          title: "Collection 2",
+          href: "/collection/the-best-alternatives-to-semrush-in-2024",
+        },
       ],
     },
     {

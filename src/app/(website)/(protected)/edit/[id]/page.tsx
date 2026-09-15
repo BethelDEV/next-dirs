@@ -1,5 +1,6 @@
 import { EditForm } from "@/components/edit/edit-form";
 import { siteConfig } from "@/config/site";
+import { getSubmission } from "@/data/submission";
 import { currentUser } from "@/lib/auth";
 import { constructMetadata } from "@/lib/metadata";
 import type {
@@ -19,17 +20,17 @@ import { notFound, redirect } from "next/navigation";
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }): Promise<Metadata | undefined> {
   return constructMetadata({
     title: "Edit product information",
     description: "Edit product information",
-    canonicalUrl: `${siteConfig.url}/edit/${params.id}`,
+    canonicalUrl: `${siteConfig.url}/edit/${(await params).id}`,
   });
 }
 
 interface EditPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function EditPage({ params }: EditPageProps) {
@@ -40,10 +41,7 @@ export default async function EditPage({ params }: EditPageProps) {
   }
 
   const [item, categoryList, tagList] = await Promise.all([
-    sanityFetch<ItemFullInfo>({
-      query: itemFullInfoByIdQuery,
-      params: { id: params.id },
-    }),
+    getSubmission((await params).id),
     sanityFetch<CategoryListQueryResult>({
       query: categoryListQuery,
     }),
@@ -57,7 +55,7 @@ export default async function EditPage({ params }: EditPageProps) {
     return notFound();
   }
   // redirect to dashboard if the item is not submitted by the user
-  if (item.submitter._id !== user.id) {
+  if (item.submitter._id !== user.id && user.role === "USER") {
     console.error("EditPage, user not match");
     return redirect("/dashboard");
   }

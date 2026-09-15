@@ -1,5 +1,5 @@
 import { sanityClient } from "@/sanity/lib/client";
-import { token } from "@/sanity/lib/token";
+import { previewToken } from "@/sanity/lib/token";
 import { validatePreviewUrl } from "@sanity/preview-url-secret";
 import { draftMode } from "next/headers";
 import { redirect } from "next/navigation";
@@ -18,18 +18,17 @@ import { redirect } from "next/navigation";
  * 3. Preview URL Secret
  * https://www.sanity.io/docs/preview-url-secret#nextjs-app-router
  */
-const clientWithToken = sanityClient.withConfig({ token });
 
 export async function GET(request: Request) {
   const { isValid, redirectTo = "/" } = await validatePreviewUrl(
-    clientWithToken,
+    sanityClient.withConfig({ token: previewToken() }),
     request.url,
   );
   if (!isValid) {
     return new Response("invalid secret", { status: 401 });
   }
 
-  draftMode().enable();
+  (await draftMode()).enable();
 
   redirect(redirectTo);
 }

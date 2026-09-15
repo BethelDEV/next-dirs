@@ -3,7 +3,7 @@
 import { publish } from "@/actions/publish";
 import { Icons } from "@/components/icons/icons";
 import { Button } from "@/components/ui/button";
-import type { ItemInfo } from "@/types";
+import type { SubmissionDto as ItemInfo } from "@/db/listings";
 import confetti from "canvas-confetti";
 import { RocketIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -22,7 +22,7 @@ export function PublishNowButton({ item }: PublishNowButtonProps) {
 
   const publishAction = () => {
     startTransition(async () => {
-      publish(item._id)
+      await publish(item._id)
         .then((data) => {
           if (data.status === "success") {
             console.log("publishAction, success:", data.message);

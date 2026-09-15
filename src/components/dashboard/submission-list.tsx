@@ -1,5 +1,5 @@
+import type { SubmissionDto as ItemInfo } from "@/db/listings";
 import { SUBMISSIONS_PER_PAGE } from "@/lib/constants";
-import type { ItemInfo } from "@/types";
 import SubmissionCard, { SubmissionCardSkeleton } from "./submission-card";
 
 interface SubmissionListProps {

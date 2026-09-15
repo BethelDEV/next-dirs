@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { COLLECTIONS_PER_PAGE, ITEMS_PER_PAGE } from "@/lib/constants";
 import type {
   BlogCategoryListQueryForSitemapResult,
@@ -152,7 +153,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   const pageCount = Math.ceil(itemListQueryResult.length / ITEMS_PER_PAGE);
-  console.log(`sitemap, item count:${itemListQueryResult.length}, pageCount:${pageCount}`);
+  console.log(
+    `sitemap, item count:${itemListQueryResult.length}, pageCount:${pageCount}`,
+  );
   for (let i = 2; i <= pageCount; i++) {
     const routeUrl = `/?page=${i}`;
     sitemapList.push({
@@ -171,7 +174,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
 
       const pageCount = Math.ceil(category.count / ITEMS_PER_PAGE);
-      console.log(`sitemap, category:${category.slug}, count:${category.count}, pageCount:${pageCount}`);
+      console.log(
+        `sitemap, category:${category.slug}, count:${category.count}, pageCount:${pageCount}`,
+      );
       for (let i = 2; i <= pageCount; i++) {
         const routeUrl = `/category/${category.slug}?page=${i}`;
         sitemapList.push({
@@ -194,7 +199,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
 
       const pageCount = Math.ceil(tag.count / ITEMS_PER_PAGE);
-      console.log(`sitemap, tag:${tag.slug}, count:${tag.count}, pageCount:${pageCount}`);
+      console.log(
+        `sitemap, tag:${tag.slug}, count:${tag.count}, pageCount:${pageCount}`,
+      );
       for (let i = 2; i <= pageCount; i++) {
         const routeUrl = `/tag/${tag.slug}?page=${i}`;
         sitemapList.push({
@@ -216,8 +223,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: new Date(collection._updatedAt).toISOString(),
       });
 
-      const pageCount = Math.ceil(collection.count / COLLECTIONS_PER_PAGE);
-      console.log(`sitemap, collection:${collection.slug}, count:${collection.count}, pageCount:${pageCount}`);
+      const pageCount = Math.ceil(collection.count / ITEMS_PER_PAGE);
+      console.log(
+        `sitemap, collection:${collection.slug}, count:${collection.count}, pageCount:${pageCount}`,
+      );
       for (let i = 2; i <= pageCount; i++) {
         const routeUrl = `/collection/${collection.slug}?page=${i}`;
         sitemapList.push({
@@ -253,7 +262,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
 
       const pageCount = Math.ceil(blogCategory.count / ITEMS_PER_PAGE);
-      console.log(`sitemap, blog category:${blogCategory.slug}, count:${blogCategory.count}, pageCount:${pageCount}`);
+      console.log(
+        `sitemap, blog category:${blogCategory.slug}, count:${blogCategory.count}, pageCount:${pageCount}`,
+      );
       for (let i = 2; i <= pageCount; i++) {
         const routeUrl = `/blog/category/${blogCategory.slug}?page=${i}`;
         sitemapList.push({
@@ -270,7 +281,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   for (const page of pageListQueryResult) {
     if (page.slug) {
-      const routeUrl = `/page/${page.slug}`;
+      const routeUrl = `/${page.slug}`;
       // console.log(`sitemap, url:${site_url}${routeUrl}`);
       sitemapList.push({
         url: `${site_url}${routeUrl}`,

@@ -23,7 +23,9 @@ export async function getCollections({
  * build count and data query for get collections from sanity
  */
 const buildQuery = (currentPage = 1) => {
-  const offsetStart = (currentPage - 1) * COLLECTIONS_PER_PAGE;
+  const page =
+    Number.isSafeInteger(currentPage) && currentPage > 0 ? currentPage : 1;
+  const offsetStart = (page - 1) * COLLECTIONS_PER_PAGE;
   const offsetEnd = offsetStart + COLLECTIONS_PER_PAGE;
 
   // @sanity-typegen-ignore

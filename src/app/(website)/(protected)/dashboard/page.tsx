@@ -6,6 +6,7 @@ import { getSubmissions } from "@/data/submission";
 import { currentUser } from "@/lib/auth";
 import { SUBMISSIONS_PER_PAGE } from "@/lib/constants";
 import { constructMetadata } from "@/lib/metadata";
+import { redirect } from "next/navigation";
 
 export const metadata = constructMetadata({
   title: "Dashboard",
@@ -16,27 +17,17 @@ export const metadata = constructMetadata({
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const user = await currentUser();
-  const userId = user?.id;
-  // console.log('DashboardPage, user:', user);
+  if (!user) redirect("/auth/login");
 
-  console.log("DashboardPage, searchParams", searchParams);
-  const { page } = searchParams as { [key: string]: string };
+  const { page } = ((await searchParams) ?? {}) as { [key: string]: string };
   const currentPage = page ? Number(page) : 1;
   const { submissions, totalCount } = await getSubmissions({
-    userId,
     currentPage,
   });
   const totalPages = Math.ceil(totalCount / SUBMISSIONS_PER_PAGE);
-  console.log(
-    "DashboardPage, totalCount",
-    totalCount,
-    ", totalPages",
-    totalPages,
-  );
-  // console.log('DashboardPage, submissions:', submissions);
 
   return (
     <div>

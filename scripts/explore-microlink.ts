@@ -4,10 +4,10 @@ dotenv.config();
 
 /**
  * Microlink API Integration
- * 
+ *
  * This module provides functions to interact with the Microlink API,
  * allowing you to fetch metadata and screenshots from a given URL.
- * 
+ *
  * Available functions:
  * - microlinkFetch: Fetches metadata such as title, description, logo, etc.
  * - microlinkInsights: Fetches insights such as technologies, languages, etc.
@@ -47,7 +47,12 @@ export const microlinkInsights = async (url: string) => {
         technologies: true,
       },
     });
-    console.log("microlinkInsights, url:", url, "data:", JSON.stringify(data, null, 2));
+    console.log(
+      "microlinkInsights, url:",
+      url,
+      "data:",
+      JSON.stringify(data, null, 2),
+    );
     return data;
   } catch (error) {
     console.error(`Error fetching data for ${url}:`, error);

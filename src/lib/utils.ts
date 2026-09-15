@@ -66,7 +66,8 @@ export function absoluteUrl(path: string) {
   return `${process.env.NEXT_PUBLIC_APP_URL}${path}`;
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL ??
+const baseUrl =
+  process.env.NEXT_PUBLIC_APP_URL ??
   `http://localhost:${process.env.PORT ?? 3000}`;
 
 export function getBaseUrl(): string {
@@ -78,10 +79,11 @@ export function getBaseUrl(): string {
  */
 export function checkValidSponsor(item: ItemInfo) {
   const now = new Date();
-  return item.pricePlan.toUpperCase() === PricePlans.SPONSOR.toUpperCase() 
-    && item.sponsorPlanStatus === "success"
-    && new Date(item.sponsorStartDate) <= now
-    && new Date(item.sponsorEndDate) >= now;
+  return (
+    item.sponsor === true &&
+    new Date(item.sponsorStartDate) <= now &&
+    new Date(item.sponsorEndDate) >= now
+  );
 }
 
 /**

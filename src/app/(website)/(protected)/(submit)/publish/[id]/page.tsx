@@ -1,6 +1,8 @@
 import SubmissionCardInPublishPage from "@/components/publish/submission-card-in-publish-page";
 import ConfettiEffect from "@/components/shared/confetti-effect";
+import { RefreshPending } from "@/components/shared/refresh-pending";
 import { siteConfig } from "@/config/site";
+import { getSubmission } from "@/data/submission";
 import { currentUser } from "@/lib/auth";
 import { constructMetadata } from "@/lib/metadata";
 import { FreePlanStatus, PricePlans, ProPlanStatus } from "@/lib/submission";
@@ -8,17 +10,18 @@ import { sanityFetch } from "@/sanity/lib/fetch";
 import { itemByIdQuery } from "@/sanity/lib/queries";
 import type { ItemInfo } from "@/types";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }): Promise<Metadata | undefined> {
   return constructMetadata({
     title: "Submit your product (3/3)",
     description: "Submit your product (3/3) Review and publish product",
-    canonicalUrl: `${siteConfig.url}/publish/${params.id}`,
+    canonicalUrl: `${siteConfig.url}/publish/${(await params).id}`,
   });
 }
 
@@ -26,8 +29,8 @@ export default async function PublishPage({
   params,
   searchParams,
 }: {
-  params: { id: string };
-  searchParams?: { [key: string]: string | string[] | undefined };
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const user = await currentUser();
   if (!user) {
@@ -35,15 +38,11 @@ export default async function PublishPage({
     return redirect("/auth/login");
   }
 
-  const { id } = params;
-  const { pay } = searchParams as { [key: string]: string };
-  const showConfetti = pay === "success";
+  const { id } = await params;
+  const { pay } = ((await searchParams) ?? {}) as { [key: string]: string };
+
   // console.log('PublishPage, itemId:', id);
-  const item = await sanityFetch<ItemInfo>({
-    query: itemByIdQuery,
-    params: { id: id },
-    disableCache: true,
-  });
+  const item = await getSubmission(id);
 
   if (!item) {
     console.error("PublishPage, item not found");
@@ -57,8 +56,24 @@ export default async function PublishPage({
     return redirect("/dashboard");
   }
 
+  if (!item.paid && ["pending", "processing"].includes(item.paymentStatus))
+    return (
+      <div className="space-y-4 py-12">
+        <RefreshPending active />
+        <h1 className="text-2xl">Payment is being confirmed</h1>
+        <p>
+          This page updates automatically. You can publish once your payment is
+          confirmed.
+        </p>
+        <Link href="/dashboard" className="underline">
+          Back to dashboard
+        </Link>
+      </div>
+    );
+
   // check status, redirect to the corresponding page if the status is not right
   if (
+    !item.firstPublishedAt &&
     item.pricePlan === PricePlans.FREE &&
     item.freePlanStatus !== FreePlanStatus.APPROVED
   ) {
@@ -74,7 +89,7 @@ export default async function PublishPage({
   return (
     <div>
       {/* show confetti if the payment is successful */}
-      {showConfetti && <ConfettiEffect />}
+      {pay === "success" && item.paid && <ConfettiEffect />}
 
       <SubmissionCardInPublishPage item={item} />
     </div>

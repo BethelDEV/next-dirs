@@ -35,9 +35,9 @@ export const aisdkFetch = async (url: string) => {
   try {
     const response = await fetch(url);
     const htmlContent = (await response.text())
-      .replace(/class="[^"]*"/g, '')
-      .replace(/<svg[^>]*>.*?<\/svg>/g, '')
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+      .replace(/class="[^"]*"/g, "")
+      .replace(/<svg[^>]*>.*?<\/svg>/g, "")
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
 
     const prompt = `Analyze the following webpage content and URL: ${url}
 
@@ -90,9 +90,9 @@ export const aisdkStructure = async (url: string) => {
 
     const response = await fetch(url);
     const htmlContent = (await response.text())
-      .replace(/class="[^"]*"/g, '')
-      .replace(/<svg[^>]*>.*?<\/svg>/g, '')
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+      .replace(/class="[^"]*"/g, "")
+      .replace(/<svg[^>]*>.*?<\/svg>/g, "")
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
 
     const result = await generateObject({
       model: google("gemini-2.0-flash-exp", {
@@ -108,12 +108,7 @@ export const aisdkStructure = async (url: string) => {
       The introduction should be in markdown format, include the key features and prices of the product.`,
     });
 
-    console.log(
-      "aisdkStructure, url:",
-      url,
-      "structured response:",
-      result,
-    );
+    console.log("aisdkStructure, url:", url, "structured response:", result);
     return result;
   } catch (error) {
     console.error(`Error processing url for ${url}:`, error);

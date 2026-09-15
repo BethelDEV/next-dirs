@@ -1,0 +1,16 @@
+NEXT_PUBLIC_APP_URL=http://localhost:8787
+NEXT_PUBLIC_SANITY_PROJECT_ID=localtest
+NEXT_PUBLIC_SANITY_DATASET=local
+SANITY_PUBLISH_TOKEN=local-placeholder
+SANITY_PREVIEW_TOKEN=local-placeholder
+RESEND_API_KEY=
+RESEND_EMAIL_FROM=local@example.invalid
+RESEND_AUDIENCE_ID=
+AUTH_SECRET=local-only-example-auth-secret-must-never-be-used-on-a-server
+STRIPE_API_KEY=sk_test_local_placeholder
+STRIPE_WEBHOOK_SECRET=local-placeholder
+STRIPE_PRO_PRICE_ID=price_local_pro
+STRIPE_SPONSOR_PRICE_ID=price_local_sponsor
+
+RESEND_EMAIL_ADMIN=admin@example.invalid
+AUTH_TRUST_HOST=true

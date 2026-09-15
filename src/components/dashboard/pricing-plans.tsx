@@ -4,9 +4,10 @@ import { FreePlanButton } from "@/components/payment/free-plan-button";
 import { ProPlanButton } from "@/components/payment/pro-plan-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { priceConfig } from "@/config/price";
+import type { SubmissionDto as ItemInfo } from "@/db/listings";
 import { PricePlans } from "@/lib/submission";
 import { cn } from "@/lib/utils";
-import type { ItemInfo, PricePlan } from "@/types/index";
+import type { PricePlan } from "@/types/index";
 import { CheckIcon, XIcon } from "lucide-react";
 import { SponsorPlanButton } from "../payment/sponsor-plan-button";
 
@@ -91,11 +92,13 @@ const PricingPlanCard = ({ item, pricePlan }: PricingPlanCardProps) => {
           <div className="mt-12 px-6">
             {pricePlan.title.toUpperCase() === PricePlans.FREE.toUpperCase() ? (
               <FreePlanButton item={item} className="w-full" />
-            ) : pricePlan.title.toUpperCase() === PricePlans.SPONSOR.toUpperCase() ? (
-              <SponsorPlanButton 
+            ) : pricePlan.title.toUpperCase() ===
+              PricePlans.SPONSOR.toUpperCase() ? (
+              <SponsorPlanButton
                 item={item}
                 pricePlan={pricePlan}
-                className="w-full" />
+                className="w-full"
+              />
             ) : (
               <ProPlanButton
                 item={item}

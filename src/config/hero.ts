@@ -5,8 +5,7 @@ export const heroConfig: HeroConfig = {
     first: "The Best",
     second: "Directory Website Template",
   },
-  subtitle:
-    "This is a demo directory website built with Mkdirs",
+  subtitle: "This is a demo directory website built with Mkdirs",
   label: {
     text: "Introducing Mkdirs on",
     href: "https://x.com/javayhu",

@@ -3,9 +3,9 @@
 import { submitToReview } from "@/actions/submit-to-review";
 import { Icons } from "@/components/icons/icons";
 import { Button } from "@/components/ui/button";
+import type { SubmissionDto as ItemInfo } from "@/db/listings";
 import { FreePlanStatus } from "@/lib/submission";
 import { cn } from "@/lib/utils";
-import type { ItemInfo } from "@/types";
 import {
   ArrowRightIcon,
   ArrowUpLeftIcon,
@@ -29,7 +29,7 @@ export function FreePlanButton({ item, className }: FreePlanButtonProps) {
 
   const submitToReviewAction = () => {
     startTransition(async () => {
-      submitToReview(item._id)
+      await submitToReview(item._id)
         .then((data) => {
           if (data.status === "success") {
             console.log("submitToReviewAction, success:", data.message);
