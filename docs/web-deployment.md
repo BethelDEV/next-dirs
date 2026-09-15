@@ -132,14 +132,14 @@ Google 登录成功时，Auth.js 仍可能将 `users.emailVerified` 保存为 `N
 | --- | --- |
 | Cloudflare Workers 部署 | 已部署，测试专用地址 https://dirs.apphall.org |
 | D1 初始化 | 已应用 `migrations/0001_initial.sql` |
-| Google 登录 | 成功 |
+| Google 登录 | 初次成功；重新部署后曾出现配置错误，开发者再次部署后确认登录恢复正常（`next-dirs-rzh`） |
 | 项目提交 | 可以提交，显示 `pending` |
 | Sanity Studio | `/studio` 可访问，可添加 tag 和分类 |
 | 首次管理员 | 使用支持 Google 关联账号的 SQL 后可访问 `/admin` |
 | 申请审核 | 管理员可以批准产品申请 |
-| 作者发布及公开详情 | 作者已主动发布；`Sync: synced · Payment: none`，但 `/item/starter-04d0821e` 返回 404，跟踪于 `next-dirs-5jm` |
+| 作者发布及公开详情 | 作者已主动发布；曾在 `synced` 状态下返回 404，部署修复并重新编辑更新产品后，开发者确认详情页可访问（`next-dirs-5jm`） |
 
-`pending` 符合免费首次提交等待审核的流程；审核通过后仍由作者选择首次发布。初版管理员脚本因要求 `emailVerified` 非空而未生效，开发者使用支持 Google 关联账号的 SQL 后确认管理员访问和审批成功（`next-dirs-3ig`）。作者发布已获反馈，但公开详情出现上述 404，需部署修复并重新同步后实际复验。
+`pending` 符合免费首次提交等待审核的流程；审核通过后仍由作者选择首次发布。初版管理员脚本因要求 `emailVerified` 非空而未生效，开发者使用支持 Google 关联账号的 SQL 后确认管理员访问和审批成功（`next-dirs-3ig`）。后续部署曾导致普通运行时变量丢失和认证配置错误；补充变量保留配置后，开发者再次部署并确认 Google 登录恢复正常。公开详情 404 经投影 ID 修复、作者重新编辑更新后也已确认恢复。`next-dirs-rzh` 与 `next-dirs-5jm` 已获实际恢复反馈；具体 Auth.js 错误名称未提供，不推断某个 Secret 曾丢失。
 
 `.19` 已进入实际验收，仍需补充部署 Git 版本/构建 ID、`docs/sql/verify-v1.sql` 核对结果、图片公开上传、正文渲染和 OG 验证。`.20` 完整业务验收尚未完成，`.21` 和 Epic 保持未完成。
 
