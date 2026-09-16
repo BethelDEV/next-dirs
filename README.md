@@ -2,7 +2,7 @@
 
 基于 Next.js 16、React 19、Cloudflare Workers / D1 和 Sanity 的目录网站模板，包含投稿、首次审核、支付、作者发布、运营管理、博客和 Newsletter。
 
-当前版本处于 `next-dirs-5x9` 验收阶段。开发者于 2026-09-15 反馈：已部署至 Cloudflare Workers 测试站 https://dirs.apphall.org，已应用 D1 初始化 SQL，Google 登录、项目提交（pending）及 Studio 分类/标签写入成功。完整业务流程仍待实际验收，详见 [部署与验收记录](docs/web-deployment.md#6-实际环境验收记录)；本地仿真结果不能替代实际环境验收。原版 Mkdirs 的 Vercel / Docker 安装指南不适用于本分支的 D1 架构。
+当前版本处于 `next-dirs-5x9` 验收阶段。开发者于 2026-09-15 反馈：已部署至 Cloudflare Workers - https://apphall.org ， 已应用 D1 初始化 SQL，Google 登录、项目提交（pending）及 Studio 分类/标签写入成功。完整业务流程仍待实际验收，详见 [部署与验收记录](docs/web-deployment.md#6-实际环境验收记录)；本地仿真结果不能替代实际环境验收。原版 Mkdirs 的 Vercel / Docker 安装指南不适用于本分支的 D1 架构。
 
 ## 数据与业务规则
 
