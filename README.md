@@ -1,4 +1,4 @@
-# Mkdirs · 架构 v1
+# next-dirs · 架构 v1
 
 基于 Next.js 16、React 19、Cloudflare Workers / D1 和 Sanity 的目录网站模板，包含投稿、首次审核、支付、作者发布、运营管理、博客和 Newsletter。
 
